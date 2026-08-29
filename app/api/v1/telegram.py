@@ -34,7 +34,10 @@ async def telegram_webhook(
     message = payload.get("message")
 
     if callback_query:
-        chat_id = str(callback_query.get("message", {}).get("chat", {}).get("id", ""))
+        chat = callback_query.get("message", {}).get("chat", {})
+        if chat.get("type") in ("group", "supergroup", "channel"):
+            return JSONResponse({"status": "ignored"})
+        chat_id = str(chat.get("id", ""))
         user_input = callback_query.get("data", "")
         from_user = callback_query.get("from", {})
         contact_name = from_user.get("first_name", "")
@@ -47,7 +50,10 @@ async def telegram_webhook(
             logger.debug("Failed to answer callback query %s", callback_id)
 
     elif message:
-        chat_id = str(message.get("chat", {}).get("id", ""))
+        chat = message.get("chat", {})
+        if chat.get("type") in ("group", "supergroup", "channel"):
+            return JSONResponse({"status": "ignored"})
+        chat_id = str(chat.get("id", ""))
         user_input = message.get("text", "")
         from_user = message.get("from", {})
         contact_name = from_user.get("first_name", "")
