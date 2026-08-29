@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me"
     API_VERSION: str = "v1"
     DEBUG: bool = False
+    PORT: int = 8000
 
     DATABASE_URL: str = "postgresql+asyncpg://edpassare:edpassare@db:5432/edpassare"
     REDIS_URL: str = "redis://redis:6379/0"

@@ -71,18 +71,21 @@ async def health() -> dict:
         checks["redis"] = "unavailable"
         healthy = False
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                f"https://graph.facebook.com/{settings.WA_API_VERSION}/{settings.WA_PHONE_NUMBER_ID}",
-                headers={"Authorization": f"Bearer {settings.WA_ACCESS_TOKEN}"},
-            )
-            checks["whatsapp"] = "connected" if resp.status_code == 200 else "degraded"
-            if resp.status_code != 200:
-                healthy = False
-    except Exception:
-        checks["whatsapp"] = "unreachable"
-        healthy = False
+    if settings.WA_ACCESS_TOKEN and settings.WA_PHONE_NUMBER_ID:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    f"https://graph.facebook.com/{settings.WA_API_VERSION}/{settings.WA_PHONE_NUMBER_ID}",
+                    headers={"Authorization": f"Bearer {settings.WA_ACCESS_TOKEN}"},
+                )
+                checks["whatsapp"] = "connected" if resp.status_code == 200 else "degraded"
+                if resp.status_code != 200:
+                    healthy = False
+        except Exception:
+            checks["whatsapp"] = "unreachable"
+            healthy = False
+    else:
+        checks["whatsapp"] = "not_configured"
 
     return {
         "status": "healthy" if healthy else "degraded",
