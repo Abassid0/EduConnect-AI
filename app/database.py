@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -9,11 +10,12 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-_pgbouncer_args = (
-    {"statement_cache_size": 0, "prepared_statement_cache_size": 0}
-    if "pooler.supabase.com" in settings.DATABASE_URL
-    else {}
-)
+_connect_args: dict = {}
+if "pooler.supabase.com" in settings.DATABASE_URL:
+    _connect_args["statement_cache_size"] = 0
+    _connect_args["prepared_statement_name_func"] = (
+        lambda: f"__asyncpg_{uuid.uuid4().hex}__"
+    )
 
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -21,7 +23,7 @@ engine = create_async_engine(
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
-    connect_args=_pgbouncer_args,
+    connect_args=_connect_args,
 )
 
 async_session_factory = async_sessionmaker(
