@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "text-gray-700 on bg-red-600",
+        "createdAt": "2026-08-14T23:48:06.449Z",
+        "reason": "Critique confirmed: btn-secondary and btn-danger are separate classes, never combined on one element"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "10px",
+        "createdAt": "2026-08-14T23:50:03.485Z",
+        "reason": "Incumbent design: message timestamp metadata at 10px is documented in DESIGN.md Chat Bubbles section"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#bae6fd",
+        "createdAt": "2026-08-17T10:17:47.839Z",
+        "reason": "brand-200 now in tailwind.config.js palette; used for text selection highlight"
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.env.migrate
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+node_modules/
+admin-dashboard/dist/
+admin-dashboard/build/
+*.log
+.DS_Store
+Thumbs.db
+
+# Claude Code / agent skills (local tooling, not project code)
+.agents/
+.claude/
+
+# Credential/secret docs
+*Credential*
+*.docx
