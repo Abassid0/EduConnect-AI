@@ -20,6 +20,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     force=True,
 )
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="EduConnect AI",
@@ -58,7 +59,8 @@ async def health() -> dict:
         async with async_session_factory() as session:
             await session.execute(text("SELECT 1"))
         checks["database"] = "connected"
-    except Exception:
+    except Exception as exc:
+        logger.error("Database health check failed: %s", exc)
         checks["database"] = "unavailable"
         healthy = False
 
