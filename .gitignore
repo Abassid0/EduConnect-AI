@@ -26,6 +26,11 @@ Thumbs.db
 # Claude Code / agent skills (local tooling, not project code)
 .agents/
 .claude/
+.github/skills/
+.github/agents/
+.github/hooks/
+.codex/
+.impeccable/
 
 # Credential/secret docs
 *Credential*
