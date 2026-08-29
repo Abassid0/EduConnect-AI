@@ -35,15 +35,15 @@ services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: edpassare
-      POSTGRES_USER: edpassare
-      POSTGRES_PASSWORD: edpassare
+      POSTGRES_DB: educonnect
+      POSTGRES_USER: educonnect
+      POSTGRES_PASSWORD: educonnect
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U edpassare"]
+      test: ["CMD-SHELL", "pg_isready -U educonnect"]
       interval: 5s
       timeout: 5s
       retries: 5

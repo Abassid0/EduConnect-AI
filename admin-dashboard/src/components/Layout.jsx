@@ -78,11 +78,11 @@ export default function Layout() {
       >
         <div className="flex h-14 items-center gap-3 border-b border-brand-800 px-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-sm font-bold text-white shadow-sm shadow-brand-500/30" aria-hidden="true">
-            E
+            EC
           </div>
           <div>
             <span className="text-sm font-semibold text-white">
-              Edpassare
+              EduConnect AI
             </span>
             <span className="ml-1.5 rounded bg-brand-800 px-1.5 py-0.5 text-[10px] font-medium text-brand-300">
               ADMIN
@@ -141,8 +141,8 @@ export default function Layout() {
             </svg>
           </button>
           <div className="ml-3 flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500 text-[10px] font-bold text-white" aria-hidden="true">E</div>
-            <span className="text-sm font-semibold text-gray-900">Edpassare</span>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500 text-[10px] font-bold text-white" aria-hidden="true">EC</div>
+            <span className="text-sm font-semibold text-gray-900">EduConnect AI</span>
           </div>
         </header>
 

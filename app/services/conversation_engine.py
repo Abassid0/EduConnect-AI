@@ -359,7 +359,7 @@ async def process_inbound_message(
     await messaging.send_text(
         channel,
         whatsapp_id,
-        f"{greeting}! Welcome to Edpassare. Let me show you what I can help with.",
+        f"{greeting}! Welcome to EduConnect AI. Let me show you what I can help with.",
     )
 
     conversation.current_flow = "main_menu"

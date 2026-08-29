@@ -1,4 +1,4 @@
-# Edpassare WhatsApp Platform — Production Deployment Guide
+# EduConnect AI — Production Deployment Guide
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ SECRET_KEY=<generate-with: python -c "import secrets; print(secrets.token_hex(32
 DEBUG=false
 
 # --- Database ---
-DATABASE_URL=postgresql+asyncpg://<user>:<password>@<host>:5432/edpassare
+DATABASE_URL=postgresql+asyncpg://<user>:<password>@<host>:5432/educonnect
 
 # --- Redis ---
 REDIS_URL=redis://<host>:6379/0
@@ -48,7 +48,7 @@ CORS_ORIGINS=https://admin.your-domain.com
 # --- AWS (receipt storage) ---
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=edpassare-receipts
+AWS_S3_BUCKET=educonnect-receipts
 AWS_REGION=eu-west-1
 ```
 
@@ -111,12 +111,12 @@ Subscribe to: `messages`, `message_deliveries`, `message_reads`.
 ### 1. Build and push Docker image
 
 ```bash
-aws ecr create-repository --repository-name edpassare
+aws ecr create-repository --repository-name educonnect
 aws ecr get-login-password | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
 
-docker build -t edpassare .
-docker tag edpassare:latest <account>.dkr.ecr.<region>.amazonaws.com/edpassare:latest
-docker push <account>.dkr.ecr.<region>.amazonaws.com/edpassare:latest
+docker build -t educonnect .
+docker tag educonnect:latest <account>.dkr.ecr.<region>.amazonaws.com/educonnect:latest
+docker push <account>.dkr.ecr.<region>.amazonaws.com/educonnect:latest
 ```
 
 ### 2. Infrastructure
@@ -162,8 +162,8 @@ sudo usermod -aG docker $USER
 ### 3. Clone and configure
 
 ```bash
-git clone <your-repo> /opt/edpassare
-cd /opt/edpassare
+git clone <your-repo> /opt/educonnect
+cd /opt/educonnect
 cp .env.example .env
 # Edit .env with production values
 ```
@@ -268,7 +268,7 @@ async def create():
     async with async_session_factory() as db:
         user = AdminUser(
             id=uuid.uuid4(),
-            email='admin@edpassare.ng',
+            email='admin@educonnect.ng',
             full_name='Admin',
             hashed_password=bcrypt.hashpw(b'CHANGE-THIS-PASSWORD', bcrypt.gensalt()).decode(),
             role='super_admin',

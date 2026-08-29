@@ -45,7 +45,7 @@ MENU_OPTIONS = [
     {
         "id": "menu_partnership",
         "title": "School Partnership",
-        "description": "Partner your school with Edpassare",
+        "description": "Partner your school with EduConnect AI",
     },
 ]
 
@@ -65,9 +65,9 @@ FLOW_MAP = {
 def build_main_menu(to: str) -> dict:
     return build_interactive_list_payload(
         to=to,
-        header="Edpassare",
+        header="EduConnect AI",
         body=(
-            "Welcome to Edpassare! How can we help you today?\n\n"
+            "Welcome to EduConnect AI! How can we help you today?\n\n"
             "Please select an option below."
         ),
         button_text="View Options",

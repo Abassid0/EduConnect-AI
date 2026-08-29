@@ -22,8 +22,8 @@ logging.basicConfig(
 )
 
 app = FastAPI(
-    title="Edpassare WhatsApp Platform",
-    description="WhatsApp-first customer engagement platform for Edpassare",
+    title="EduConnect AI",
+    description="AI-powered multi-channel school engagement platform",
     version="1.0.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,

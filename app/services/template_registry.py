@@ -18,14 +18,14 @@ TEMPLATES: dict[str, str] = {
         "Hi {{1}},\n\n"
         "Reminder: {{2}} has a {{3}} class tomorrow at {{4}}.\n\n"
         "See you there!\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     "class_reminder_1h": (
         "Hi {{1}},\n\n"
         "{{2}}'s {{3}} class starts in 1 hour ({{4}}).\n\n"
         "Please ensure they are ready. See you soon!\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     # ----------------------------------------------------------------
@@ -38,7 +38,7 @@ TEMPLATES: dict[str, str] = {
         "in {{3}} is due in 7 days.\n\n"
         "Amount: {{4}}\n\n"
         "Reply 'menu' to make a payment.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     "payment_reminder_due": (
@@ -47,7 +47,7 @@ TEMPLATES: dict[str, str] = {
         "Amount: {{4}}\n\n"
         "Please make your payment to secure the spot. "
         "Reply 'menu' and select 'Make Payment'.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     "payment_reminder_overdue": (
@@ -56,7 +56,7 @@ TEMPLATES: dict[str, str] = {
         "Amount: {{4}}\n\n"
         "Please pay as soon as possible to avoid losing the enrollment. "
         "Reply 'menu' and select 'Make Payment'.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     # ----------------------------------------------------------------
@@ -64,14 +64,14 @@ TEMPLATES: dict[str, str] = {
     # ----------------------------------------------------------------
 
     "invoice_notification": (
-        "New Invoice from Edpassare\n\n"
+        "New Invoice from EduConnect AI\n\n"
         "Invoice #: {{1}}\n"
         "Description: {{2}}\n"
         "Amount Due: {{3}}\n"
         "Due Date: {{4}}\n\n"
         "Reply 'menu' and select 'Make Payment' to pay now, "
         "or 'Check Balance' to view all outstanding fees.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     "invoice_reminder": (
@@ -81,7 +81,7 @@ TEMPLATES: dict[str, str] = {
         "Amount Due: {{3}}\n"
         "Due Date: {{4}}\n\n"
         "Reply 'menu' and select 'Make Payment' to settle this now.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     # ----------------------------------------------------------------
@@ -94,7 +94,7 @@ TEMPLATES: dict[str, str] = {
         "Status: {{3}}\n"
         "Programme: {{4}}\n\n"
         "Reply 'menu' for more options.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     "progress_update": (
@@ -102,13 +102,13 @@ TEMPLATES: dict[str, str] = {
         "{{2}}\n\n"
         "Student: {{3}}\n\n"
         "Reply 'menu' for more options.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 
     "certificate_completion": (
         "Congratulations! {{1}} has completed the {{2}} programme!\n\n"
         "A certificate of completion is now available.\n\n"
-        "— Edpassare"
+        "— EduConnect AI"
     ),
 }
 

@@ -1,6 +1,6 @@
-# Edpassare WhatsApp Message Templates
+# EduConnect AI WhatsApp Message Templates
 
-This document lists every WhatsApp message template needed for the Edpassare platform. Templates must be submitted and approved in the Meta Business Manager before they can be sent via the WhatsApp Business API.
+This document lists every WhatsApp message template needed for the EduConnect AI platform. Templates must be submitted and approved in the Meta Business Manager before they can be sent via the WhatsApp Business API.
 
 > **Note:** The platform sends most messages as free-form text within 24-hour conversation windows (triggered by the user messaging first). Templates are needed for **proactive notifications** — messages sent outside the 24-hour window.
 
@@ -26,7 +26,7 @@ Reminder: {{2}} has a {{3}} class tomorrow at {{4}}.
 
 See you there! 🎓
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -50,7 +50,7 @@ Hi {{1}},
 
 Please ensure they are ready. See you soon!
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -78,7 +78,7 @@ Amount: {{4}}
 
 Reply 'menu' to make a payment.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -104,7 +104,7 @@ Amount: {{4}}
 
 Please make your payment to secure the spot. Reply 'menu' and select 'Make Payment'.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -130,7 +130,7 @@ Amount: {{4}}
 
 Please pay as soon as possible to avoid losing the enrollment. Reply 'menu' and select 'Make Payment'.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -152,7 +152,7 @@ These templates are used for proactive invoice notifications and escalating paym
 **Purpose:** Sent when an admin creates and sends an invoice to a parent.
 
 ```
-New Invoice from Edpassare
+New Invoice from EduConnect AI
 
 Invoice #: {{1}}
 Description: {{2}}
@@ -161,7 +161,7 @@ Due Date: {{4}}
 
 Reply 'menu' and select 'Make Payment' to pay now, or 'Check Balance' to view all outstanding fees.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -189,7 +189,7 @@ Due Date: {{4}}
 
 Reply 'menu' and select 'Make Payment' to settle this now.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -300,7 +300,7 @@ Programme: {{4}}
 
 Reply 'menu' for more options.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -329,7 +329,7 @@ Student: {{3}}
 
 Reply 'menu' for more options.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -347,7 +347,7 @@ Congratulations! *{{1}}* has completed the *{{2}}* programme!
 
 A certificate of completion is now available.
 
-— Edpassare
+— EduConnect AI
 ```
 
 | Parameter | Description | Example |
@@ -363,7 +363,7 @@ Sent as **free-form text** within the 24-hour window (the user just messaged fir
 
 **Message format:**
 ```
-Hi {name}! Welcome to Edpassare. Let me show you what I can help with.
+Hi {name}! Welcome to EduConnect AI. Let me show you what I can help with.
 ```
 
 Followed by an **interactive list message** (main menu) — interactive messages do not require template approval.
@@ -402,7 +402,7 @@ Templates must be submitted via Meta Business Manager → WhatsApp Manager → M
 ## Meta Template Approval Tips
 
 1. Use the `UTILITY` category for transactional messages (reminders, receipts, status updates)
-2. Include `— Edpassare` at the end of each template for brand identification
+2. Include `— EduConnect AI` at the end of each template for brand identification
 3. Do not include URLs in templates unless they are approved domains
 4. Keep templates under 1024 characters
 5. Avoid promotional language in UTILITY templates — save that for `MARKETING` category

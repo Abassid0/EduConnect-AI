@@ -67,7 +67,7 @@ async def initialize_paystack_transaction(
     db: AsyncSession,
 ) -> Payment:
     if not email:
-        email = f"{payment.whatsapp_number}@edpassare.ng"
+        email = f"{payment.whatsapp_number}@educonnect.ai"
 
     amount_kobo = int(payment.amount * 100)
 

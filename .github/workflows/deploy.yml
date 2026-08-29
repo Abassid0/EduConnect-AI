@@ -14,8 +14,8 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: edpassare_test
-          POSTGRES_USER: edpassare
+          POSTGRES_DB: educonnect_test
+          POSTGRES_USER: educonnect
           POSTGRES_PASSWORD: testpass
         ports:
           - 5432:5432
@@ -31,7 +31,7 @@ jobs:
           - 6379:6379
 
     env:
-      DATABASE_URL: postgresql+asyncpg://edpassare:testpass@localhost:5432/edpassare_test
+      DATABASE_URL: postgresql+asyncpg://educonnect:testpass@localhost:5432/educonnect_test
       REDIS_URL: redis://localhost:6379/0
       WA_VERIFY_TOKEN: test-token
       WA_APP_SECRET: test-secret

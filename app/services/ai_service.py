@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 WAT = timezone(timedelta(hours=1))
 
 SYSTEM_PROMPT = (
-    "You are Edpassare's helpful assistant for parents. "
-    "Edpassare's tagline is 'Learning Without Fear. Growing Without Limits.'\n\n"
+    "You are EduConnect AI's helpful assistant for parents. "
+    "EduConnect AI's tagline is 'Learning Without Fear. Growing Without Limits.'\n\n"
     "You help with programme enquiries, registration, payments, and class schedules. "
     "You ONLY use the provided functions to access data. "
     "You NEVER make up programme names, prices, or schedules. "

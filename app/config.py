@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     PORT: int = 8000
 
-    DATABASE_URL: str = "postgresql+asyncpg://edpassare:edpassare@db:5432/edpassare"
+    DATABASE_URL: str = "postgresql+asyncpg://educonnect:educonnect@db:5432/educonnect"
     REDIS_URL: str = "redis://redis:6379/0"
 
     WA_PHONE_NUMBER_ID: str = ""
@@ -27,11 +27,11 @@ class Settings(BaseSettings):
 
     PAYSTACK_SECRET_KEY: str = ""
     PAYSTACK_PUBLIC_KEY: str = ""
-    PAYSTACK_CALLBACK_URL: str = "https://edpassare.ng/payment/callback"
+    PAYSTACK_CALLBACK_URL: str = "https://educonnect.ai/payment/callback"
 
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_S3_BUCKET: str = "edpassare-receipts"
+    AWS_S3_BUCKET: str = "educonnect-receipts"
     AWS_REGION: str = "eu-west-1"
 
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

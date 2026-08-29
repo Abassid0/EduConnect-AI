@@ -26,7 +26,7 @@ async def handle_step(
             flow_data=flow_data,
             reply=build_text_payload(
                 to,
-                "Thank you for your interest in partnering with Edpassare!\n\n"
+                "Thank you for your interest in partnering with EduConnect AI!\n\n"
                 "We'd like to learn about your institution.\n\n"
                 "What is the name of your school or institution?",
             ),

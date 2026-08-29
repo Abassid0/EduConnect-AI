@@ -4,7 +4,7 @@ Usage (inside container):
     python -m scripts.seed_admin
 
 Or from docker:
-    docker exec edpassare-build-api-1 python -m scripts.seed_admin
+    docker exec educonnect-build-api-1 python -m scripts.seed_admin
 """
 import asyncio
 import uuid
@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.database import engine
 from app.models.admin_user import AdminUser
 
-SEED_EMAIL = "admin@edpassare.ng"
-SEED_PASSWORD = "Edpassare@2026"
+SEED_EMAIL = "admin@educonnect.ai"
+SEED_PASSWORD = "EduConnect@2026"
 SEED_NAME = "Super Admin"
 SEED_ROLE = "super_admin"
 

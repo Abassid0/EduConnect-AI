@@ -36,10 +36,10 @@ export default function Login() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-brand-500 text-2xl font-bold text-white shadow-lg shadow-brand-500/30">
-            E
+            EC
           </div>
           <h1 className="text-xl font-semibold text-white">
-            Edpassare Admin
+            EduConnect AI Admin
           </h1>
           <p className="mt-1.5 text-sm text-brand-300">
             Sign in to the control room
@@ -65,7 +65,7 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input"
-              placeholder="admin@edpassare.ng"
+              placeholder="admin@educonnect.ai"
               required
               autoFocus
             />
@@ -96,7 +96,7 @@ export default function Login() {
         </form>
 
         <p className="mt-6 text-center text-xs text-brand-400">
-          WhatsApp-first school engagement platform
+          AI-powered school engagement platform
         </p>
       </div>
     </div>

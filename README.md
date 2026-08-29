@@ -1,6 +1,6 @@
-# Edpassare WhatsApp Platform
+# EduConnect AI
 
-WhatsApp-first customer engagement platform for Edpassare, built with FastAPI, PostgreSQL, Redis, and Celery.
+AI-powered multi-channel school engagement platform, built with FastAPI, PostgreSQL, Redis, and Celery.
 
 ## Quick Start
 
@@ -84,4 +84,4 @@ pytest tests/ -v
 
 ## Architecture
 
-See `Edpassare-Technical-Architecture.md` for the full specification covering all 6 phases.
+See `Edpassare-Technical-Architecture.md` for the full specification.
