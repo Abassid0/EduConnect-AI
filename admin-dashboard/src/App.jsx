@@ -10,6 +10,7 @@ import Inbox from "./pages/Inbox";
 import Login from "./pages/Login";
 import Permissions from "./pages/Permissions";
 import ReportCards from "./pages/ReportCards";
+import Staff from "./pages/Staff";
 import Tickets from "./pages/Tickets";
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="calendar" element={<Calendar />} />
         <Route path="permissions" element={<Permissions />} />
         <Route path="report-cards" element={<ReportCards />} />
+        <Route path="staff" element={<Staff />} />
         <Route path="analytics" element={<Analytics />} />
       </Route>
     </Routes>

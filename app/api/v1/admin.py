@@ -26,6 +26,7 @@ from app.services import (
     registration_service,
     support_service,
 )
+from app.services.admin_notify import notify_ticket_assigned
 from app.services.conversation_engine import log_message
 from app.services.whatsapp_service import wa_service
 from app.utils.auth import get_current_user, require_role
@@ -318,6 +319,17 @@ async def assign_ticket(
     db: AsyncSession = Depends(get_db),
 ) -> SupportTicketOut:
     ticket = await support_service.assign_ticket(ticket_id, data.agent_id, db)
+
+    agent_result = await db.execute(
+        select(AdminUser).where(AdminUser.id == data.agent_id)
+    )
+    agent = agent_result.scalar_one_or_none()
+    await notify_ticket_assigned(
+        ticket_number=ticket.ticket_number,
+        agent_name=agent.full_name if agent else str(data.agent_id),
+        subject=ticket.subject,
+    )
+
     return SupportTicketOut.model_validate(ticket)
 
 

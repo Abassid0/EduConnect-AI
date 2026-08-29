@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import admin, analytics, auth, billing, broadcast, calendar, engagement, notifications, payments, payment_plan, permission, programmes, report_cards, students, telegram, whatsapp
+from app.api.v1 import admin, analytics, auth, billing, broadcast, calendar, engagement, notifications, payments, payment_plan, permission, programmes, report_cards, staff, students, telegram, whatsapp
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(whatsapp.router)
@@ -19,3 +19,4 @@ router.include_router(auth.router)
 router.include_router(admin.router)
 router.include_router(analytics.router)
 router.include_router(engagement.router)
+router.include_router(staff.router)

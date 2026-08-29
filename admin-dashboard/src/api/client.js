@@ -165,6 +165,15 @@ export const reportCards = {
     client.put(`/report-cards/${id}/deliveries/${parentId}/acknowledge`).then(r => r.data),
 };
 
+export const staff = {
+  list: (params) => client.get("/staff", { params }),
+  get: (id) => client.get(`/staff/${id}`),
+  create: (data) => client.post("/staff", data),
+  update: (id, data) => client.put(`/staff/${id}`, data),
+  resetPassword: (id, newPassword) =>
+    client.post(`/staff/${id}/reset-password`, { new_password: newPassword }),
+};
+
 export const analytics = {
   volume: (params) => client.get("/analytics/volume", { params }),
   responseTime: (params) => client.get("/analytics/response-time", { params }),

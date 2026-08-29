@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
 from app.services import analytics_service, support_service
+from app.services.admin_notify import notify_escalation
 from app.services.whatsapp_service import wa_service
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,14 @@ async def escalate(
             "department": trigger["department"],
             "ticket_number": ticket.ticket_number,
         },
+    )
+
+    await notify_escalation(
+        ticket_number=ticket.ticket_number,
+        department=trigger["department"],
+        priority=trigger["priority"],
+        reason=reason,
+        user_id=whatsapp_number,
     )
 
     try:

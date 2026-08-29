@@ -43,6 +43,11 @@ class Settings(BaseSettings):
 
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_WEBHOOK_SECRET: str = ""
+    TELEGRAM_ADMIN_CHAT_ID: str = ""
+
+    WHATSAPP_ADMIN_PHONE: str = ""
+
+    ADMIN_DASHBOARD_URL: str = ""
 
     @property
     def wa_api_base(self) -> str:

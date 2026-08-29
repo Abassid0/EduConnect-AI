@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.flows import FlowResult
 from app.models.conversation import Conversation
 from app.services import escalation_service, registration_service, support_service
+from app.services.admin_notify import notify_human_agent_request, notify_new_ticket
 from app.utils.whatsapp_helpers import (
     build_interactive_button_payload,
     build_interactive_list_payload,
@@ -129,6 +130,13 @@ async def handle_step(
                 description=flow_data.get("description"),
                 parent_id=parent_id,
             )
+            await notify_human_agent_request(
+                ticket_number=ticket.ticket_number,
+                department=ticket.department,
+                priority=ticket.priority,
+                subject=ticket.subject,
+                user_id=to,
+            )
             return FlowResult(
                 flow_complete=True,
                 flow_data={},
@@ -149,6 +157,14 @@ async def handle_step(
             conversation_id=conversation.id,
             parent_id=parent_id,
             whatsapp_number=to,
+        )
+
+        await notify_new_ticket(
+            ticket_number=ticket.ticket_number,
+            department=ticket.department,
+            priority=ticket.priority,
+            subject=ticket.subject,
+            user_id=to,
         )
 
         return FlowResult(
