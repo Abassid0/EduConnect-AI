@@ -3,12 +3,24 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.conversation import Conversation
 from app.models.invoice import Invoice
 from app.models.payment import Payment
-from app.services import programme_service
-from app.services.whatsapp_service import wa_service
+from app.services import messaging, programme_service
+from app.services.messaging import CHANNEL_WHATSAPP
 
 logger = logging.getLogger(__name__)
+
+
+async def _resolve_channel(whatsapp_id: str, db: AsyncSession) -> str:
+    result = await db.execute(
+        select(Conversation.channel)
+        .where(Conversation.whatsapp_id == whatsapp_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+    channel = result.scalar_one_or_none()
+    return channel or CHANNEL_WHATSAPP
 
 
 async def send_payment_receipt(payment: Payment, db: AsyncSession) -> None:
@@ -36,7 +48,8 @@ async def send_payment_receipt(payment: Payment, db: AsyncSession) -> None:
     )
 
     try:
-        await wa_service.send_text(payment.whatsapp_number, receipt_text)
+        channel = await _resolve_channel(payment.whatsapp_number, db)
+        await messaging.send_text(channel, payment.whatsapp_number, receipt_text)
     except Exception:
         logger.exception(
             "Failed to send receipt for payment %s", payment.reference
@@ -79,7 +92,8 @@ async def send_invoice_payment_receipt(payment: Payment, db: AsyncSession) -> No
     )
 
     try:
-        await wa_service.send_text(payment.whatsapp_number, receipt_text)
+        channel = await _resolve_channel(payment.whatsapp_number, db)
+        await messaging.send_text(channel, payment.whatsapp_number, receipt_text)
     except Exception:
         logger.exception(
             "Failed to send invoice receipt for payment %s", payment.reference

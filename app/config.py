@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     PAYSTACK_SECRET_KEY: str = ""
     PAYSTACK_PUBLIC_KEY: str = ""
-    PAYSTACK_CALLBACK_URL: str = "https://educonnect.ai/payment/callback"
+    PAYSTACK_CALLBACK_URL: str = "https://educonnect-ai-production.up.railway.app/api/v1/payments/callback"
 
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
