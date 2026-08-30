@@ -46,6 +46,9 @@ async def get_or_create_conversation(
             whatsapp_number=whatsapp_id,
             conversation_id=conversation.id,
         )
+    elif conversation.channel != channel:
+        conversation.channel = channel
+        await db.flush()
 
     return conversation
 

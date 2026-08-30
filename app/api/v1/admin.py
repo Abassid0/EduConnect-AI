@@ -186,14 +186,17 @@ async def send_reply(
 
     channel = getattr(conversation, "channel", CHANNEL_WHATSAPP) if conversation else CHANNEL_WHATSAPP
 
-    if data.msg_type == "template" and data.template_name:
-        send_result = await wa_service.send_template(
-            data.whatsapp_number,
-            data.template_name,
-            params=data.template_params,
-        )
-    else:
-        send_result = await messaging.send_text(channel, data.whatsapp_number, data.message)
+    try:
+        if data.msg_type == "template" and data.template_name:
+            send_result = await wa_service.send_template(
+                data.whatsapp_number,
+                data.template_name,
+                params=data.template_params,
+            )
+        else:
+            send_result = await messaging.send_text(channel, data.whatsapp_number, data.message)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Message delivery failed: {exc}")
 
     msg_id = None
     if send_result:
