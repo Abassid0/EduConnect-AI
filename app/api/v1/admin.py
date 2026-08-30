@@ -289,8 +289,39 @@ async def close_conversation(
     current_user: AdminUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    conversation = await escalation_service.resume_bot(conversation_id, db)
-    return {"status": "closed", "conversation_id": str(conversation.id)}
+    from app.models.support_ticket import SupportTicket
+    from datetime import datetime, timezone
+
+    result = await db.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conversation = result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    conversation.status = "closed"
+    conversation.current_flow = None
+    conversation.current_step = None
+    conversation.flow_data = {}
+
+    ticket_result = await db.execute(
+        select(SupportTicket)
+        .where(
+            SupportTicket.conversation_id == conversation_id,
+            SupportTicket.status.in_(["open", "in_progress"]),
+        )
+    )
+    open_tickets = list(ticket_result.scalars().all())
+    for ticket in open_tickets:
+        ticket.status = "closed"
+        ticket.resolved_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    return {
+        "status": "closed",
+        "conversation_id": str(conversation.id),
+        "tickets_closed": len(open_tickets),
+    }
 
 
 # --- Support Tickets ---
