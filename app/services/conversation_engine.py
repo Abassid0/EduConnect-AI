@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.flows import FlowResult
 from app.flows.main_menu import FLOW_MAP, build_main_menu, handle_menu_selection
@@ -162,12 +163,14 @@ async def _handle_flow_result(
         conversation.current_flow = None
         conversation.current_step = None
         conversation.flow_data = {}
+        flag_modified(conversation, "flow_data")
         return
 
     if result.next_flow:
         conversation.current_flow = result.next_flow
         conversation.current_step = result.next_step
-        conversation.flow_data = result.flow_data
+        conversation.flow_data = dict(result.flow_data)
+        flag_modified(conversation, "flow_data")
 
         if result.next_flow == "main_menu":
             menu_payload = build_main_menu(whatsapp_id)
@@ -193,11 +196,13 @@ async def _handle_flow_result(
             conversation.current_flow = None
             conversation.current_step = None
             conversation.flow_data = {}
+            flag_modified(conversation, "flow_data")
             menu_payload = build_main_menu(whatsapp_id)
             await _send_replies(whatsapp_id, [menu_payload], conversation, db, channel)
     else:
         conversation.current_step = result.next_step
-        conversation.flow_data = result.flow_data
+        conversation.flow_data = dict(result.flow_data)
+        flag_modified(conversation, "flow_data")
 
 
 async def process_inbound_message(

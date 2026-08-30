@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -18,7 +19,7 @@ class Conversation(Base):
     channel: Mapped[str] = mapped_column(String(20), default="whatsapp", server_default="whatsapp")
     current_flow: Mapped[str | None] = mapped_column(String(50))
     current_step: Mapped[str | None] = mapped_column(String(50))
-    flow_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    flow_data: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSONB), default=dict)
     selected_student_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     status: Mapped[str] = mapped_column(String(20), default="active")
     assigned_agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
