@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.flows import FlowResult
 from app.models.conversation import Conversation
+from app.models.programme import CATEGORY_LABELS, PROGRAMME_CATEGORIES
 from app.services import analytics_service, programme_service, referral_service, registration_service
 from app.utils.whatsapp_helpers import (
     build_interactive_button_payload,
@@ -19,6 +20,7 @@ STEPS = [
     "child_name",
     "date_of_birth",
     "gender",
+    "select_category",
     "select_programme",
     "select_programme_response",
     "select_schedule",
@@ -196,14 +198,63 @@ async def handle_step(
             )
         flow_data["gender"] = gender.capitalize()
 
-        programmes = await programme_service.get_active_programmes(db)
+        rows = [
+            {
+                "id": f"cat_{cat}",
+                "title": CATEGORY_LABELS[cat],
+                "description": f"Programmes for {CATEGORY_LABELS[cat]}",
+            }
+            for cat in PROGRAMME_CATEGORIES
+        ]
+        return FlowResult(
+            next_step="select_category",
+            flow_data=flow_data,
+            reply=build_interactive_list_payload(
+                to,
+                header="Choose Category",
+                body="Which programme category would you like to register for?",
+                button_text="View Categories",
+                rows=rows,
+                section_title="Categories",
+            ),
+        )
+
+    if step == "select_category":
+        category = user_input.strip().replace("cat_", "")
+        if category not in PROGRAMME_CATEGORIES:
+            rows = [
+                {
+                    "id": f"cat_{cat}",
+                    "title": CATEGORY_LABELS[cat],
+                    "description": f"Programmes for {CATEGORY_LABELS[cat]}",
+                }
+                for cat in PROGRAMME_CATEGORIES
+            ]
+            return FlowResult(
+                next_step="select_category",
+                flow_data=flow_data,
+                reply=build_interactive_list_payload(
+                    to,
+                    header="Choose Category",
+                    body="Please select a valid category from the list.",
+                    button_text="View Categories",
+                    rows=rows,
+                    section_title="Categories",
+                ),
+            )
+
+        flow_data["category"] = category
+        programmes = await programme_service.get_active_programmes(
+            db, category=category
+        )
+
         if not programmes:
             return FlowResult(
                 flow_complete=True,
                 flow_data=flow_data,
                 reply=build_text_payload(
                     to,
-                    "Sorry, there are no programmes available at the moment. "
+                    f"Sorry, no {CATEGORY_LABELS[category]} programmes are available. "
                     "Please check back later!",
                 ),
             )
@@ -222,7 +273,7 @@ async def handle_step(
             reply=build_interactive_list_payload(
                 to,
                 header="Choose a Programme",
-                body="Select the programme you'd like to enrol in:",
+                body=f"Select a {CATEGORY_LABELS[category]} programme to enrol in:",
                 button_text="View Programmes",
                 rows=rows,
                 section_title="Available Programmes",
@@ -384,12 +435,15 @@ async def handle_step(
 
         programme_name = flow_data.get("programme_name", "N/A")
         fee = flow_data.get("programme_fee", "N/A")
+        category_label = CATEGORY_LABELS.get(flow_data.get("category", ""), "")
+        category_line = f"Category: {category_label}\n" if category_label else ""
         summary = (
             f"*Registration Summary*\n\n"
             f"Parent: {flow_data.get('parent_name', 'N/A')}\n"
             f"Child: {flow_data.get('child_name', 'N/A')}\n"
             f"DOB: {flow_data.get('date_of_birth', 'N/A')}\n"
             f"Gender: {flow_data.get('gender', 'N/A')}\n"
+            f"{category_line}"
             f"Programme: {programme_name}\n"
             f"Fee: N{float(fee):,.0f}\n"
             f"Emergency Contact: {flow_data.get('emergency_contact_name', 'N/A')} "

@@ -2,16 +2,25 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+
+from app.models.programme import (
+    CATEGORY_LEVELS,
+    PROGRAMME_CATEGORIES,
+    SSS_LEVELS,
+    TRACKS,
+)
 
 
 class ProgrammeOut(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    category: str
     age_range_min: int | None = None
     age_range_max: int | None = None
     level: str | None = None
+    track: str | None = None
     duration: str | None = None
     delivery_mode: str | None = None
     fee: Decimal
@@ -27,9 +36,11 @@ class ProgrammeOut(BaseModel):
 class ProgrammeCreate(BaseModel):
     name: str
     description: str | None = None
+    category: str
     age_range_min: int | None = None
     age_range_max: int | None = None
     level: str | None = None
+    track: str | None = None
     duration: str | None = None
     delivery_mode: str | None = None
     fee: Decimal
@@ -38,19 +49,55 @@ class ProgrammeCreate(BaseModel):
     instructor: str | None = None
     is_active: bool = True
 
+    @model_validator(mode="after")
+    def validate_category_level_track(self):
+        if self.category not in PROGRAMME_CATEGORIES:
+            raise ValueError(f"category must be one of {PROGRAMME_CATEGORIES}")
+        if self.level:
+            valid_levels = CATEGORY_LEVELS.get(self.category, ())
+            if self.level not in valid_levels:
+                raise ValueError(
+                    f"level '{self.level}' is not valid for category '{self.category}'"
+                )
+        if self.track:
+            if self.track not in TRACKS:
+                raise ValueError(f"track must be one of {TRACKS}")
+            if self.level not in SSS_LEVELS:
+                raise ValueError(
+                    "track is only applicable to SSS levels (sss_1, sss_2, sss_3)"
+                )
+        return self
+
 
 class ProgrammeUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    category: str | None = None
     age_range_min: int | None = None
     age_range_max: int | None = None
     level: str | None = None
+    track: str | None = None
     duration: str | None = None
     delivery_mode: str | None = None
     fee: Decimal | None = None
     available_slots: int | None = None
     instructor: str | None = None
     is_active: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_category_level_track(self):
+        if self.category is not None and self.category not in PROGRAMME_CATEGORIES:
+            raise ValueError(f"category must be one of {PROGRAMME_CATEGORIES}")
+        if self.level is not None and self.category is not None:
+            valid_levels = CATEGORY_LEVELS.get(self.category, ())
+            if self.level not in valid_levels:
+                raise ValueError(
+                    f"level '{self.level}' is not valid for category '{self.category}'"
+                )
+        if self.track is not None:
+            if self.track not in TRACKS:
+                raise ValueError(f"track must be one of {TRACKS}")
+        return self
 
 
 class ScheduleOut(BaseModel):

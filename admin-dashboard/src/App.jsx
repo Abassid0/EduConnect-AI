@@ -9,6 +9,7 @@ import ConversationView from "./pages/ConversationView";
 import Inbox from "./pages/Inbox";
 import Login from "./pages/Login";
 import Permissions from "./pages/Permissions";
+import Programmes from "./pages/Programmes";
 import ReportCards from "./pages/ReportCards";
 import Staff from "./pages/Staff";
 import Tickets from "./pages/Tickets";
@@ -33,6 +34,7 @@ export default function App() {
         />
         <Route path="tickets" element={<Tickets />} />
         <Route path="billing" element={<Billing />} />
+        <Route path="programmes" element={<Programmes />} />
         <Route path="broadcast" element={<Broadcast />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="permissions" element={<Permissions />} />

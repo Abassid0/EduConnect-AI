@@ -43,7 +43,8 @@ TOOLS = [
         "name": "get_programmes",
         "description": (
             "Search for available education programmes. "
-            "Can filter by child's age and/or programme level."
+            "Can filter by child's age, programme level, and/or category "
+            "(pre_primary, primary, secondary)."
         ),
         "input_schema": {
             "type": "object",
@@ -54,7 +55,14 @@ TOOLS = [
                 },
                 "level": {
                     "type": "string",
-                    "description": "Programme level to filter by (e.g. beginner, intermediate)",
+                    "description": (
+                        "Programme level (e.g. nursery_1, primary_3, jss_1, sss_2)"
+                    ),
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Programme category: pre_primary, primary, or secondary",
+                    "enum": ["pre_primary", "primary", "secondary"],
                 },
             },
             "required": [],
@@ -156,9 +164,14 @@ TOOLS = [
 # --- Controlled backend functions ---
 
 async def _tool_get_programmes(
-    db: AsyncSession, age: int | None = None, level: str | None = None
+    db: AsyncSession,
+    age: int | None = None,
+    level: str | None = None,
+    category: str | None = None,
 ) -> list[dict]:
     stmt = select(Programme).where(Programme.is_active.is_(True))
+    if category:
+        stmt = stmt.where(Programme.category == category)
     if age is not None:
         stmt = stmt.where(
             (Programme.age_range_min.is_(None) | (Programme.age_range_min <= age)),
@@ -179,8 +192,10 @@ async def _tool_get_programmes(
             "id": str(p.id),
             "name": p.name,
             "description": p.description or "",
+            "category": p.category,
             "age_range": f"{p.age_range_min or '?'}-{p.age_range_max or '?'} years",
             "level": p.level or "All levels",
+            "track": p.track,
             "fee": f"NGN {p.fee:,.2f}",
             "duration": p.duration or "N/A",
             "delivery_mode": p.delivery_mode or "N/A",
@@ -214,8 +229,10 @@ async def _tool_get_programme_details(
         "id": str(p.id),
         "name": p.name,
         "description": p.description or "",
+        "category": p.category,
         "age_range": f"{p.age_range_min or '?'}-{p.age_range_max or '?'} years",
         "level": p.level or "All levels",
+        "track": p.track,
         "fee": f"NGN {p.fee:,.2f}",
         "duration": p.duration or "N/A",
         "delivery_mode": p.delivery_mode or "N/A",

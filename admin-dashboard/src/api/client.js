@@ -174,6 +174,15 @@ export const staff = {
     client.post(`/staff/${id}/reset-password`, { new_password: newPassword }),
 };
 
+export const programmes = {
+  list: (params) => client.get("/programmes", { params }),
+  get: (id) => client.get(`/programmes/${id}`),
+  create: (data) => client.post("/programmes", data),
+  update: (id, data) => client.patch(`/programmes/${id}`, data),
+  categories: () => client.get("/programmes/categories/"),
+  levels: () => client.get("/programmes/levels/"),
+};
+
 export const analytics = {
   volume: (params) => client.get("/analytics/volume", { params }),
   responseTime: (params) => client.get("/analytics/response-time", { params }),

@@ -4,6 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.flows import FlowResult
 from app.models.conversation import Conversation
+from app.models.programme import (
+    CATEGORY_LABELS,
+    LEVEL_LABELS,
+    PROGRAMME_CATEGORIES,
+    TRACK_LABELS,
+)
 from app.services import programme_service
 from app.utils.whatsapp_helpers import (
     build_interactive_button_payload,
@@ -22,15 +28,65 @@ async def handle_step(
     to = conversation.whatsapp_id
 
     if step == "start":
-        programmes = await programme_service.get_active_programmes(db)
+        rows = [
+            {
+                "id": f"cat_{cat}",
+                "title": CATEGORY_LABELS[cat],
+                "description": f"View {CATEGORY_LABELS[cat]} programmes",
+            }
+            for cat in PROGRAMME_CATEGORIES
+        ]
+        return FlowResult(
+            next_step="select_category",
+            flow_data=flow_data,
+            reply=build_interactive_list_payload(
+                to,
+                header="Our Programmes",
+                body="Which category of programmes are you interested in?",
+                button_text="View Categories",
+                rows=rows,
+                section_title="Programme Categories",
+            ),
+        )
+
+    if step == "select_category":
+        category = user_input.strip().replace("cat_", "")
+        if category not in PROGRAMME_CATEGORIES:
+            rows = [
+                {
+                    "id": f"cat_{cat}",
+                    "title": CATEGORY_LABELS[cat],
+                    "description": f"View {CATEGORY_LABELS[cat]} programmes",
+                }
+                for cat in PROGRAMME_CATEGORIES
+            ]
+            return FlowResult(
+                next_step="select_category",
+                flow_data=flow_data,
+                reply=build_interactive_list_payload(
+                    to,
+                    header="Our Programmes",
+                    body="Please select a valid category from the list.",
+                    button_text="View Categories",
+                    rows=rows,
+                    section_title="Programme Categories",
+                ),
+            )
+
+        flow_data["category"] = category
+        programmes = await programme_service.get_active_programmes(
+            db, category=category
+        )
+
         if not programmes:
             return FlowResult(
-                flow_complete=True,
+                next_step="start",
                 flow_data=flow_data,
                 reply=build_text_payload(
                     to,
-                    "No programmes are available right now. "
-                    "Please check back soon!\n\nReply 'menu' for options.",
+                    f"No {CATEGORY_LABELS[category]} programmes are available "
+                    "right now. Please try another category.\n\n"
+                    "Reply 'menu' for options.",
                 ),
             )
 
@@ -51,8 +107,8 @@ async def handle_step(
             flow_data=flow_data,
             reply=build_interactive_list_payload(
                 to,
-                header="Our Programmes",
-                body="Browse our available programmes below. Tap one for details.",
+                header=f"{CATEGORY_LABELS[category]} Programmes",
+                body=f"Browse our {CATEGORY_LABELS[category]} programmes below.",
                 button_text="View Programmes",
                 rows=rows,
                 section_title="Programmes",
@@ -85,12 +141,22 @@ async def handle_step(
         elif programme.age_range_min:
             age_range = f"Ages: {programme.age_range_min}+\n"
 
+        category_line = f"Category: {CATEGORY_LABELS.get(programme.category, programme.category)}\n"
+        level_line = f"Level: {LEVEL_LABELS.get(programme.level, programme.level) if programme.level else 'All levels'}\n"
+        track_line = (
+            f"Track: {TRACK_LABELS.get(programme.track, programme.track)}\n"
+            if programme.track
+            else ""
+        )
+
         details = (
             f"*{programme.name}*\n\n"
             f"{programme.description or ''}\n\n"
             f"Fee: N{programme.fee:,.0f} {programme.currency}\n"
             f"{age_range}"
-            f"Level: {programme.level or 'All levels'}\n"
+            f"{category_line}"
+            f"{level_line}"
+            f"{track_line}"
             f"Duration: {programme.duration or 'N/A'}\n"
             f"Mode: {programme.delivery_mode or 'N/A'}\n"
             f"Instructor: {programme.instructor or 'N/A'}\n"

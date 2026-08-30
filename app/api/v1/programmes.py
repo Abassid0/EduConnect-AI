@@ -23,10 +23,13 @@ async def list_programmes(
     active_only: bool = True,
     age: int | None = None,
     level: str | None = None,
+    category: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> list[ProgrammeOut]:
     if active_only:
-        programmes = await programme_service.get_active_programmes(db, age=age, level=level)
+        programmes = await programme_service.get_active_programmes(
+            db, age=age, level=level, category=category
+        )
     else:
         programmes = await programme_service.get_all_programmes(db)
     return [ProgrammeOut.model_validate(p) for p in programmes]
@@ -103,6 +106,13 @@ async def create_schedule(
         db=db,
     )
     return ScheduleOut.model_validate(schedule)
+
+
+@router.get("/categories/", response_model=list[str])
+async def list_categories(
+    db: AsyncSession = Depends(get_db),
+) -> list[str]:
+    return await programme_service.get_categories(db)
 
 
 @router.get("/levels/", response_model=list[str])

@@ -12,9 +12,12 @@ async def get_active_programmes(
     db: AsyncSession,
     age: int | None = None,
     level: str | None = None,
+    category: str | None = None,
 ) -> list[Programme]:
     stmt = select(Programme).where(Programme.is_active.is_(True))
 
+    if category:
+        stmt = stmt.where(Programme.category == category)
     if age is not None:
         stmt = stmt.where(
             (Programme.age_range_min.is_(None) | (Programme.age_range_min <= age)),
@@ -105,5 +108,15 @@ async def get_levels(db: AsyncSession) -> list[str]:
         .where(Programme.is_active.is_(True), Programme.level.isnot(None))
         .distinct()
         .order_by(Programme.level)
+    )
+    return [row[0] for row in result.all()]
+
+
+async def get_categories(db: AsyncSession) -> list[str]:
+    result = await db.execute(
+        select(Programme.category)
+        .where(Programme.is_active.is_(True))
+        .distinct()
+        .order_by(Programme.category)
     )
     return [row[0] for row in result.all()]
