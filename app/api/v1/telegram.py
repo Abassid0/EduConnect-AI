@@ -150,8 +150,10 @@ async def telegram_webhook(
             db=db,
             channel=CHANNEL_TELEGRAM,
         )
+        await db.commit()
     except Exception:
         logger.exception("Error processing Telegram message from %s", chat_id)
+        await db.rollback()
 
     return JSONResponse({"status": "ok"})
 

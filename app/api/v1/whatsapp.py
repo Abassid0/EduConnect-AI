@@ -74,10 +74,12 @@ async def receive_webhook(
                 contact_name=contact_name,
                 db=db,
             )
+            await db.commit()
         except Exception:
             logger.exception(
                 "[%s] Error processing message from %s", cid, msg.sender_number
             )
+            await db.rollback()
 
         if msg.id:
             try:
