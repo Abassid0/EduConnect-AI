@@ -435,6 +435,10 @@ async def handle_step(
 
         programme_name = flow_data.get("programme_name", "N/A")
         fee = flow_data.get("programme_fee", "N/A")
+        try:
+            fee_display = f"N{float(fee):,.0f}"
+        except (ValueError, TypeError):
+            fee_display = "N/A"
         category_label = CATEGORY_LABELS.get(flow_data.get("category", ""), "")
         category_line = f"Category: {category_label}\n" if category_label else ""
         summary = (
@@ -445,7 +449,7 @@ async def handle_step(
             f"Gender: {flow_data.get('gender', 'N/A')}\n"
             f"{category_line}"
             f"Programme: {programme_name}\n"
-            f"Fee: N{float(fee):,.0f}\n"
+            f"Fee: {fee_display}\n"
             f"Emergency Contact: {flow_data.get('emergency_contact_name', 'N/A')} "
             f"({flow_data.get('emergency_contact_phone', 'N/A')})\n\n"
             f"Is everything correct?"
