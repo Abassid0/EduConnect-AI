@@ -29,7 +29,7 @@ from app.services import (
 from app.services.admin_notify import notify_ticket_assigned
 from app.services.conversation_engine import log_message
 from app.services import messaging
-from app.services.messaging import CHANNEL_WHATSAPP
+from app.services.messaging import CHANNEL_TELEGRAM, CHANNEL_WHATSAPP
 from app.services.whatsapp_service import wa_service
 from app.utils.auth import get_current_user, require_role
 
@@ -185,6 +185,19 @@ async def send_reply(
     conversation = result.scalar_one_or_none()
 
     channel = getattr(conversation, "channel", CHANNEL_WHATSAPP) if conversation else CHANNEL_WHATSAPP
+
+    if channel == CHANNEL_WHATSAPP and conversation:
+        msg_check = await db.execute(
+            select(Message.whatsapp_msg_id)
+            .where(Message.conversation_id == conversation.id, Message.direction == "inbound")
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        last_msg_id = msg_check.scalar_one_or_none()
+        if last_msg_id and str(last_msg_id).startswith("tg_"):
+            channel = CHANNEL_TELEGRAM
+            conversation.channel = CHANNEL_TELEGRAM
+            await db.flush()
 
     try:
         if data.msg_type == "template" and data.template_name:
