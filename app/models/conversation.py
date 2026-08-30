@@ -15,6 +15,7 @@ class Conversation(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     whatsapp_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    channel: Mapped[str] = mapped_column(String(20), default="whatsapp", server_default="whatsapp")
     current_flow: Mapped[str | None] = mapped_column(String(50))
     current_step: Mapped[str | None] = mapped_column(String(50))
     flow_data: Mapped[dict] = mapped_column(JSONB, default=dict)

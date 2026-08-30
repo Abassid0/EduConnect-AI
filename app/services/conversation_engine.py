@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_or_create_conversation(
-    whatsapp_id: str, db: AsyncSession
+    whatsapp_id: str, db: AsyncSession, channel: str = CHANNEL_WHATSAPP,
 ) -> Conversation:
     result = await db.execute(
         select(Conversation)
@@ -33,6 +33,7 @@ async def get_or_create_conversation(
         conversation = Conversation(
             id=uuid.uuid4(),
             whatsapp_id=whatsapp_id,
+            channel=channel,
             status="active",
             flow_data={},
         )
@@ -206,7 +207,7 @@ async def process_inbound_message(
     db: AsyncSession,
     channel: str = CHANNEL_WHATSAPP,
 ) -> None:
-    conversation = await get_or_create_conversation(whatsapp_id, db)
+    conversation = await get_or_create_conversation(whatsapp_id, db, channel)
 
     await log_message(
         conversation=conversation,

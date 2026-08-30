@@ -28,6 +28,8 @@ from app.services import (
 )
 from app.services.admin_notify import notify_ticket_assigned
 from app.services.conversation_engine import log_message
+from app.services import messaging
+from app.services.messaging import CHANNEL_WHATSAPP
 from app.services.whatsapp_service import wa_service
 from app.utils.auth import get_current_user, require_role
 
@@ -182,21 +184,25 @@ async def send_reply(
     )
     conversation = result.scalar_one_or_none()
 
+    channel = getattr(conversation, "channel", CHANNEL_WHATSAPP) if conversation else CHANNEL_WHATSAPP
+
     if data.msg_type == "template" and data.template_name:
-        wa_result = await wa_service.send_template(
+        send_result = await wa_service.send_template(
             data.whatsapp_number,
             data.template_name,
             params=data.template_params,
         )
     else:
-        wa_result = await wa_service.send_text(data.whatsapp_number, data.message)
+        send_result = await messaging.send_text(channel, data.whatsapp_number, data.message)
 
-    wa_msg_id = wa_result.get("messages", [{}])[0].get("id") if wa_result else None
+    msg_id = None
+    if send_result:
+        msg_id = send_result.get("messages", [{}])[0].get("id") if "messages" in send_result else send_result.get("result", {}).get("message_id")
 
     if conversation:
         await log_message(
             conversation=conversation,
-            whatsapp_msg_id=wa_msg_id,
+            whatsapp_msg_id=str(msg_id) if msg_id else None,
             direction="outbound",
             msg_type=data.msg_type,
             content={"body": data.message, "agent_id": str(current_user.id)},
@@ -205,7 +211,7 @@ async def send_reply(
             db=db,
         )
 
-    return {"status": "sent", "whatsapp_msg_id": wa_msg_id}
+    return {"status": "sent", "message_id": msg_id}
 
 
 # --- Bot Pause / Resume ---

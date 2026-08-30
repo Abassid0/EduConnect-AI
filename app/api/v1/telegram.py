@@ -1,14 +1,17 @@
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.models.admin_user import AdminUser
-from app.services.conversation_engine import process_inbound_message
+from app.models.conversation import Conversation
+from app.services.conversation_engine import log_message, process_inbound_message
 from app.services.messaging import CHANNEL_TELEGRAM
 from app.services.telegram_service import telegram_service
 from app.utils.auth import get_current_user
@@ -16,6 +19,78 @@ from app.utils.auth import get_current_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
+
+
+async def _handle_group_reply(
+    message: dict, chat: dict, db: AsyncSession,
+) -> JSONResponse:
+    """Handle replies in the admin notification group.
+
+    When an admin replies to a bot notification, extract the user ID from
+    the original notification and forward the reply to that user.
+    """
+    admin_chat_id = settings.TELEGRAM_ADMIN_CHAT_ID
+    if not admin_chat_id or str(chat.get("id")) != admin_chat_id:
+        return JSONResponse({"status": "ignored"})
+
+    reply_to = message.get("reply_to_message")
+    reply_text = message.get("text", "").strip()
+    if not reply_to or not reply_text:
+        return JSONResponse({"status": "ignored"})
+
+    original_from = reply_to.get("from", {})
+    if not original_from.get("is_bot"):
+        return JSONResponse({"status": "ignored"})
+
+    original_text = reply_to.get("text", "")
+    user_match = re.search(r"User:\s*(\d+)", original_text)
+    if not user_match:
+        return JSONResponse({"status": "ignored"})
+
+    user_chat_id = user_match.group(1)
+    admin_name = message.get("from", {}).get("first_name", "Admin")
+
+    try:
+        result = await db.execute(
+            select(Conversation)
+            .where(Conversation.whatsapp_id == user_chat_id)
+            .order_by(Conversation.created_at.desc())
+            .limit(1)
+        )
+        conversation = result.scalar_one_or_none()
+
+        await telegram_service.send_text(
+            user_chat_id,
+            f"*{admin_name}:* {reply_text}",
+        )
+
+        if conversation:
+            await log_message(
+                conversation=conversation,
+                whatsapp_msg_id=f"tg_group_{message.get('message_id', '')}",
+                direction="outbound",
+                msg_type="text",
+                content={"body": reply_text, "agent_name": admin_name},
+                sender=f"agent:telegram:{admin_name}",
+                recipient=user_chat_id,
+                db=db,
+            )
+
+        await telegram_service.send_text(
+            admin_chat_id,
+            f"Reply sent to user {user_chat_id}",
+        )
+    except Exception:
+        logger.exception("Failed to forward group reply to user %s", user_chat_id)
+        try:
+            await telegram_service.send_text(
+                admin_chat_id,
+                f"Failed to send reply to user {user_chat_id}. Please try from the dashboard.",
+            )
+        except Exception:
+            pass
+
+    return JSONResponse({"status": "ok"})
 
 
 @router.post("/webhook")
@@ -52,7 +127,7 @@ async def telegram_webhook(
     elif message:
         chat = message.get("chat", {})
         if chat.get("type") in ("group", "supergroup", "channel"):
-            return JSONResponse({"status": "ignored"})
+            return await _handle_group_reply(message, chat, db)
         chat_id = str(chat.get("id", ""))
         user_input = message.get("text", "")
         from_user = message.get("from", {})
