@@ -21,8 +21,8 @@ class Message(Base):
     direction: Mapped[str] = mapped_column(String(10), nullable=False)
     msg_type: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    sender: Mapped[str] = mapped_column(String(20), nullable=False)
-    recipient: Mapped[str] = mapped_column(String(20), nullable=False)
+    sender: Mapped[str] = mapped_column(String(100), nullable=False)
+    recipient: Mapped[str] = mapped_column(String(100), nullable=False)
     delivery_status: Mapped[str] = mapped_column(String(20), default="sent")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
