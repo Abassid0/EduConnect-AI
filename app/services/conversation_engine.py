@@ -224,8 +224,8 @@ async def process_inbound_message(
     )
 
     if user_input.lower().strip() == "menu":
-        conversation.current_flow = None
-        conversation.current_step = None
+        conversation.current_flow = "main_menu"
+        conversation.current_step = "show"
         conversation.flow_data = {}
         menu_payload = build_main_menu(whatsapp_id)
         await _send_replies(whatsapp_id, [menu_payload], conversation, db, channel)
