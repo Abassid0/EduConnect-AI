@@ -107,6 +107,21 @@ export const billing = {
 
   triggerReminders: () => client.post("/billing/tasks/send-reminders"),
   triggerOverdueCheck: () => client.post("/billing/tasks/check-overdue"),
+
+  programmeFeeItems: (programmeId, params) =>
+    client.get(`/billing/programmes/${programmeId}/fee-items`, { params }),
+  feeBreakdown: (programmeId, term) =>
+    client.get(`/billing/programmes/${programmeId}/fee-breakdown`, {
+      params: { term },
+    }),
+  addProgrammeFeeItem: (programmeId, data) =>
+    client.post(`/billing/programmes/${programmeId}/fee-items`, data),
+  updateProgrammeFeeItem: (itemId, data) =>
+    client.patch(`/billing/fee-items/${itemId}`, data),
+  deleteProgrammeFeeItem: (itemId) =>
+    client.delete(`/billing/fee-items/${itemId}`),
+  generateTermInvoices: (data) =>
+    client.post("/billing/generate-term-invoices", data),
 };
 
 export const broadcasts = {

@@ -9,15 +9,20 @@ from app.database import get_db
 from app.models.admin_user import AdminUser
 from app.schemas.billing import (
     BillingStatsOut,
+    FeeBreakdownOut,
     FeeTypeCreate,
     FeeTypeOut,
     FeeTypeUpdate,
+    GenerateTermInvoicesRequest,
     InvoiceBulkCreate,
     InvoiceCreate,
     InvoiceListOut,
     InvoiceOut,
     InvoiceSendRequest,
     ParentBalanceOut,
+    ProgrammeFeeItemCreate,
+    ProgrammeFeeItemOut,
+    ProgrammeFeeItemUpdate,
 )
 from app.services import billing_service
 from app.services.notification_service import send_notification
@@ -374,6 +379,134 @@ async def billing_stats(
 ) -> BillingStatsOut:
     stats = await billing_service.get_billing_stats(db)
     return BillingStatsOut(**stats)
+
+
+# ---------------------------------------------------------------------------
+# Programme Fee Items (fee breakdown templates)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/programmes/{programme_id}/fee-items",
+    response_model=ProgrammeFeeItemOut,
+    status_code=201,
+)
+async def add_programme_fee_item(
+    programme_id: uuid.UUID,
+    data: ProgrammeFeeItemCreate,
+    _user: AdminUser = Depends(require_role("super_admin", "admin", "finance")),
+    db: AsyncSession = Depends(get_db),
+) -> ProgrammeFeeItemOut:
+    item = await billing_service.add_programme_fee_item(
+        programme_id=programme_id,
+        fee_type_id=data.fee_type_id,
+        amount=data.amount,
+        db=db,
+        term=data.term,
+        is_optional=data.is_optional,
+    )
+    return ProgrammeFeeItemOut.model_validate(item)
+
+
+@router.get(
+    "/programmes/{programme_id}/fee-items",
+    response_model=list[ProgrammeFeeItemOut],
+)
+async def list_programme_fee_items(
+    programme_id: uuid.UUID,
+    term: str | None = None,
+    _user: AdminUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProgrammeFeeItemOut]:
+    items = await billing_service.list_programme_fee_items(
+        programme_id, db, term=term
+    )
+    return [ProgrammeFeeItemOut.model_validate(i) for i in items]
+
+
+@router.get(
+    "/programmes/{programme_id}/fee-breakdown",
+    response_model=FeeBreakdownOut,
+)
+async def get_fee_breakdown(
+    programme_id: uuid.UUID,
+    term: str = "first",
+    _user: AdminUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> FeeBreakdownOut:
+    breakdown = await billing_service.get_fee_breakdown_for_programme(
+        programme_id, term, db
+    )
+    return FeeBreakdownOut(
+        mandatory_items=[
+            ProgrammeFeeItemOut.model_validate(i)
+            for i in breakdown["mandatory_items"]
+        ],
+        optional_items=[
+            ProgrammeFeeItemOut.model_validate(i)
+            for i in breakdown["optional_items"]
+        ],
+        mandatory_total=breakdown["mandatory_total"],
+        optional_total=breakdown["optional_total"],
+        grand_total=breakdown["grand_total"],
+    )
+
+
+@router.patch(
+    "/fee-items/{item_id}",
+    response_model=ProgrammeFeeItemOut,
+)
+async def update_programme_fee_item(
+    item_id: uuid.UUID,
+    data: ProgrammeFeeItemUpdate,
+    _user: AdminUser = Depends(require_role("super_admin", "admin", "finance")),
+    db: AsyncSession = Depends(get_db),
+) -> ProgrammeFeeItemOut:
+    updates = data.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    item = await billing_service.update_programme_fee_item(item_id, updates, db)
+    if not item:
+        raise HTTPException(status_code=404, detail="Fee item not found")
+    return ProgrammeFeeItemOut.model_validate(item)
+
+
+@router.delete("/fee-items/{item_id}", response_model=ProgrammeFeeItemOut)
+async def delete_programme_fee_item(
+    item_id: uuid.UUID,
+    _user: AdminUser = Depends(require_role("super_admin", "admin", "finance")),
+    db: AsyncSession = Depends(get_db),
+) -> ProgrammeFeeItemOut:
+    item = await billing_service.remove_programme_fee_item(item_id, db)
+    if not item:
+        raise HTTPException(status_code=404, detail="Fee item not found")
+    return ProgrammeFeeItemOut.model_validate(item)
+
+
+# ---------------------------------------------------------------------------
+# Generate Term Invoices
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/generate-term-invoices",
+    response_model=list[InvoiceListOut],
+    status_code=201,
+)
+async def generate_term_invoices(
+    data: GenerateTermInvoicesRequest,
+    _user: AdminUser = Depends(require_role("super_admin", "admin", "finance")),
+    db: AsyncSession = Depends(get_db),
+) -> list[InvoiceListOut]:
+    invoices = await billing_service.generate_term_invoices_for_programme(
+        programme_id=data.programme_id,
+        term=data.term,
+        academic_year=data.academic_year,
+        db=db,
+        due_date=data.due_date,
+        include_optional=data.include_optional,
+    )
+    return [InvoiceListOut.model_validate(inv) for inv in invoices]
 
 
 # ---------------------------------------------------------------------------

@@ -17,6 +17,7 @@ from app.models.notification import Notification, NotificationPreference
 from app.models.parent import Parent
 from app.models.payment import Payment
 from app.models.programme import Programme
+from app.models.programme_fee_item import ProgrammeFeeItem
 from app.models.referral import Referral
 from app.models.student import Student
 from app.models.support_ticket import InternalNote, SupportTicket
@@ -42,6 +43,7 @@ __all__ = [
     "Parent",
     "Payment",
     "Programme",
+    "ProgrammeFeeItem",
     "Referral",
     "Student",
     "SupportTicket",

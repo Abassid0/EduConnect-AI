@@ -8,11 +8,14 @@ from sqlalchemy import func as sa_func
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.enrollment import Enrollment
 from app.models.fee_type import FeeType
 from app.models.invoice import Invoice
 from app.models.invoice_item import InvoiceItem
 from app.models.parent import Parent
 from app.models.payment import Payment
+from app.models.programme import Programme
+from app.models.programme_fee_item import ProgrammeFeeItem
 from app.models.student import Student
 from app.services import payment_service
 
@@ -461,3 +464,210 @@ async def get_billing_stats(db: AsyncSession) -> dict:
         "paid_count": paid_count,
         "overdue_count": overdue_row.count,
     }
+
+
+# ---------------------------------------------------------------------------
+# Programme Fee Items (fee breakdown templates)
+# ---------------------------------------------------------------------------
+
+
+async def add_programme_fee_item(
+    programme_id: uuid.UUID,
+    fee_type_id: uuid.UUID,
+    amount: Decimal,
+    db: AsyncSession,
+    term: str | None = None,
+    is_optional: bool = False,
+) -> ProgrammeFeeItem:
+    item = ProgrammeFeeItem(
+        id=uuid.uuid4(),
+        programme_id=programme_id,
+        fee_type_id=fee_type_id,
+        term=term,
+        amount=amount,
+        is_optional=is_optional,
+    )
+    db.add(item)
+    await db.flush()
+    await db.refresh(item)
+    return item
+
+
+async def list_programme_fee_items(
+    programme_id: uuid.UUID,
+    db: AsyncSession,
+    term: str | None = None,
+    include_optional: bool = True,
+) -> list[ProgrammeFeeItem]:
+    stmt = (
+        select(ProgrammeFeeItem)
+        .where(
+            ProgrammeFeeItem.programme_id == programme_id,
+            ProgrammeFeeItem.is_active.is_(True),
+        )
+        .order_by(ProgrammeFeeItem.is_optional, ProgrammeFeeItem.created_at)
+    )
+    if term:
+        stmt = stmt.where(
+            (ProgrammeFeeItem.term == term) | (ProgrammeFeeItem.term.is_(None))
+        )
+    if not include_optional:
+        stmt = stmt.where(ProgrammeFeeItem.is_optional.is_(False))
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_programme_fee_item(
+    item_id: uuid.UUID, db: AsyncSession
+) -> ProgrammeFeeItem | None:
+    result = await db.execute(
+        select(ProgrammeFeeItem).where(ProgrammeFeeItem.id == item_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def update_programme_fee_item(
+    item_id: uuid.UUID,
+    updates: dict,
+    db: AsyncSession,
+) -> ProgrammeFeeItem | None:
+    item = await get_programme_fee_item(item_id, db)
+    if not item:
+        return None
+    for key, value in updates.items():
+        if hasattr(item, key):
+            setattr(item, key, value)
+    await db.flush()
+    await db.refresh(item)
+    return item
+
+
+async def remove_programme_fee_item(
+    item_id: uuid.UUID, db: AsyncSession
+) -> ProgrammeFeeItem | None:
+    return await update_programme_fee_item(item_id, {"is_active": False}, db)
+
+
+async def get_fee_breakdown_for_programme(
+    programme_id: uuid.UUID,
+    term: str,
+    db: AsyncSession,
+    include_optional: bool = True,
+) -> dict:
+    items = await list_programme_fee_items(
+        programme_id, db, term=term, include_optional=include_optional
+    )
+    mandatory = [i for i in items if not i.is_optional]
+    optional = [i for i in items if i.is_optional]
+    mandatory_total = sum(i.amount for i in mandatory)
+    optional_total = sum(i.amount for i in optional)
+    return {
+        "mandatory_items": mandatory,
+        "optional_items": optional,
+        "mandatory_total": mandatory_total,
+        "optional_total": optional_total,
+        "grand_total": mandatory_total + optional_total,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Generate Term Invoices from Fee Breakdown
+# ---------------------------------------------------------------------------
+
+
+async def generate_term_invoice(
+    student_id: uuid.UUID,
+    programme_id: uuid.UUID,
+    term: str,
+    academic_year: str,
+    db: AsyncSession,
+    due_date: date | None = None,
+    include_optional: bool = False,
+) -> Invoice:
+    from app.models.programme import TERM_LABELS
+
+    student_result = await db.execute(
+        select(Student).where(Student.id == student_id)
+    )
+    student = student_result.scalar_one_or_none()
+    if not student:
+        raise ValueError(f"Student {student_id} not found")
+
+    programme_result = await db.execute(
+        select(Programme).where(Programme.id == programme_id)
+    )
+    programme = programme_result.scalar_one_or_none()
+    if not programme:
+        raise ValueError(f"Programme {programme_id} not found")
+
+    fee_items = await list_programme_fee_items(
+        programme_id, db, term=term, include_optional=include_optional
+    )
+    if not fee_items:
+        raise ValueError(
+            f"No fee items defined for programme {programme.name}, term {term}"
+        )
+
+    term_label = TERM_LABELS.get(term, term.title())
+    academic_term = f"{academic_year} {term_label}"
+    title = f"{programme.name} - {term_label} {academic_year}"
+
+    items = []
+    for fi in fee_items:
+        label = fi.fee_type.name
+        if fi.is_optional:
+            label = f"{label} (Optional)"
+        items.append(
+            {
+                "fee_type_id": fi.fee_type_id,
+                "description": label,
+                "quantity": 1,
+                "unit_amount": fi.amount,
+            }
+        )
+
+    invoice = await create_invoice(
+        parent_id=student.parent_id,
+        title=title,
+        items=items,
+        db=db,
+        student_id=student_id,
+        academic_term=academic_term,
+        due_date=due_date,
+    )
+    return invoice
+
+
+async def generate_term_invoices_for_programme(
+    programme_id: uuid.UUID,
+    term: str,
+    academic_year: str,
+    db: AsyncSession,
+    due_date: date | None = None,
+    include_optional: bool = False,
+) -> list[Invoice]:
+    enrollment_result = await db.execute(
+        select(Enrollment).where(
+            Enrollment.programme_id == programme_id,
+            Enrollment.status == "active",
+        )
+    )
+    enrollments = list(enrollment_result.scalars().all())
+
+    invoices = []
+    for enrollment in enrollments:
+        try:
+            invoice = await generate_term_invoice(
+                student_id=enrollment.student_id,
+                programme_id=programme_id,
+                term=term,
+                academic_year=academic_year,
+                db=db,
+                due_date=due_date,
+                include_optional=include_optional,
+            )
+            invoices.append(invoice)
+        except ValueError as e:
+            logger.warning("Skipping invoice for enrollment %s: %s", enrollment.id, e)
+
+    return invoices

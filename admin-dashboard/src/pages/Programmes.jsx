@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { programmes } from "../api/client";
+import { billing, programmes } from "../api/client";
 
 const CATEGORIES = [
   { value: "pre_primary", label: "Pre-Primary" },
@@ -92,6 +92,7 @@ export default function Programmes() {
   const [showInactive, setShowInactive] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [feeBreakdownId, setFeeBreakdownId] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -289,6 +290,12 @@ export default function Programmes() {
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
                     <button
+                      onClick={() => setFeeBreakdownId(p.id)}
+                      className="text-sm text-amber-600 hover:text-amber-800"
+                    >
+                      Fee Items
+                    </button>
+                    <button
                       onClick={() => {
                         setEditingId(p.id);
                         setShowForm(false);
@@ -343,6 +350,15 @@ export default function Programmes() {
             load();
           }}
           setError={setError}
+        />
+      )}
+
+      {feeBreakdownId && (
+        <FeeBreakdownModal
+          programme={items.find((p) => p.id === feeBreakdownId)}
+          onClose={() => setFeeBreakdownId(null)}
+          setError={setError}
+          flash={flash}
         />
       )}
     </div>
@@ -738,6 +754,298 @@ function ProgrammeModal({ programme, onClose, onSaved, setError }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+const TERMS_LIST = [
+  { value: "", label: "All Terms" },
+  { value: "first", label: "1st Term" },
+  { value: "second", label: "2nd Term" },
+  { value: "third", label: "3rd Term" },
+];
+
+function FeeBreakdownModal({ programme, onClose, setError, flash }) {
+  const [items, setItems] = useState([]);
+  const [feeTypes, setFeeTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({
+    fee_type_id: "",
+    amount: "",
+    term: "",
+    is_optional: false,
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadItems = useCallback(async () => {
+    try {
+      const { data } = await billing.programmeFeeItems(programme.id);
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      setError("Failed to load fee items");
+    } finally {
+      setLoading(false);
+    }
+  }, [programme.id, setError]);
+
+  useEffect(() => {
+    loadItems();
+    billing.feeTypes().then(({ data }) => {
+      setFeeTypes(Array.isArray(data) ? data : []);
+    });
+  }, [loadItems]);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await billing.addProgrammeFeeItem(programme.id, {
+        fee_type_id: addForm.fee_type_id,
+        amount: Number(addForm.amount),
+        term: addForm.term || null,
+        is_optional: addForm.is_optional,
+      });
+      flash("Fee item added");
+      setShowAdd(false);
+      setAddForm({ fee_type_id: "", amount: "", term: "", is_optional: false });
+      loadItems();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to add fee item");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (itemId) => {
+    try {
+      await billing.deleteProgrammeFeeItem(itemId);
+      flash("Fee item removed");
+      loadItems();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to remove fee item");
+    }
+  };
+
+  const mandatoryTotal = items
+    .filter((i) => !i.is_optional && i.is_active)
+    .reduce((sum, i) => sum + Number(i.amount), 0);
+  const optionalTotal = items
+    .filter((i) => i.is_optional && i.is_active)
+    .reduce((sum, i) => sum + Number(i.amount), 0);
+
+  const feeTypeName = (id) => {
+    const ft = feeTypes.find((f) => f.id === id);
+    return ft ? ft.name : id;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Fee Breakdown: {programme.name}
+            </h2>
+            <p className="text-sm text-gray-500">
+              Mandatory: NGN {mandatoryTotal.toLocaleString()} | Optional: NGN{" "}
+              {optionalTotal.toLocaleString()} | Total: NGN{" "}
+              {(mandatoryTotal + optionalTotal).toLocaleString()}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            X
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="py-8 text-center text-gray-500">Loading...</div>
+        ) : (
+          <>
+            <table className="mb-4 min-w-full divide-y divide-gray-200 rounded-lg border border-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Fee Type
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Amount
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Term
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Type
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {items.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={!item.is_active ? "opacity-40" : ""}
+                  >
+                    <td className="px-4 py-2 text-sm text-gray-900">
+                      {item.fee_type?.name || feeTypeName(item.fee_type_id)}
+                    </td>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                      NGN {Number(item.amount).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-600">
+                      {item.term
+                        ? TERMS_LIST.find((t) => t.value === item.term)
+                            ?.label || item.term
+                        : "All Terms"}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          item.is_optional
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {item.is_optional ? "Optional" : "Mandatory"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-sm text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {items.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-8 text-center text-sm text-gray-500"
+                    >
+                      No fee items defined yet. Add items to create an itemized
+                      fee breakdown for this programme.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            {showAdd ? (
+              <form
+                onSubmit={handleAdd}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-4"
+              >
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
+                  Add Fee Item
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Fee Type *
+                    </label>
+                    <select
+                      required
+                      value={addForm.fee_type_id}
+                      onChange={(e) =>
+                        setAddForm({ ...addForm, fee_type_id: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select fee type</option>
+                      {feeTypes.map((ft) => (
+                        <option key={ft.id} value={ft.id}>
+                          {ft.name} ({ft.category})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Amount (NGN) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      step="0.01"
+                      value={addForm.amount}
+                      onChange={(e) =>
+                        setAddForm({ ...addForm, amount: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Term
+                    </label>
+                    <select
+                      value={addForm.term}
+                      onChange={(e) =>
+                        setAddForm({ ...addForm, term: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      {TERMS_LIST.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={addForm.is_optional}
+                        onChange={(e) =>
+                          setAddForm({
+                            ...addForm,
+                            is_optional: e.target.checked,
+                          })
+                        }
+                        className="rounded"
+                      />
+                      Optional fee
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdd(false)}
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                  >
+                    {submitting ? "Adding..." : "Add Item"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => setShowAdd(true)}
+                className="rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 hover:border-brand-400 hover:text-brand-600"
+              >
+                + Add Fee Item
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

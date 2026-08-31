@@ -10,7 +10,7 @@ from app.models.programme import (
     PROGRAMME_CATEGORIES,
     TRACK_LABELS,
 )
-from app.services import programme_service
+from app.services import billing_service, programme_service
 from app.utils.whatsapp_helpers import (
     build_interactive_button_payload,
     build_interactive_list_payload,
@@ -152,10 +152,28 @@ async def handle_step(
             else ""
         )
 
+        fee_section = f"Fee: N{programme.fee:,.0f} {programme.currency}\n"
+        fee_items = await billing_service.list_programme_fee_items(
+            programme.id, db, term="first"
+        )
+        if fee_items:
+            fee_lines = []
+            mandatory_total = sum(
+                fi.amount for fi in fee_items if not fi.is_optional
+            )
+            for fi in fee_items:
+                tag = " _(Optional)_" if fi.is_optional else ""
+                fee_lines.append(f"  - {fi.fee_type.name}: N{fi.amount:,.0f}{tag}")
+            fee_section = (
+                f"*Fee Breakdown (1st Term):*\n"
+                + "\n".join(fee_lines)
+                + f"\n*Total: N{mandatory_total:,.0f}*\n"
+            )
+
         details = (
             f"*{programme.name}*\n\n"
             f"{programme.description or ''}\n\n"
-            f"Fee: N{programme.fee:,.0f} {programme.currency}\n"
+            f"{fee_section}"
             f"{age_range}"
             f"{category_line}"
             f"{level_line}"

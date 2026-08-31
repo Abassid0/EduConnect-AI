@@ -98,6 +98,9 @@ class Programme(Base):
             raise ValueError(f"Invalid fee_structure: {value}")
         return value
 
+    fee_items: Mapped[list["ProgrammeFeeItem"]] = relationship(
+        "ProgrammeFeeItem", back_populates="programme", lazy="selectin"
+    )
     schedules: Mapped[list["ClassSchedule"]] = relationship(
         "ClassSchedule", back_populates="programme", lazy="selectin"
     )

@@ -182,20 +182,24 @@ async def _show_invoice_details(
         )
 
     lines = ["*Outstanding Invoices*\n"]
-    for i, inv in enumerate(invoices[:10], 1):
+    for inv in invoices[:5]:
         remaining = inv.total_amount - inv.amount_paid
-        status_emoji = "!" if inv.status == "overdue" else "-"
+        status_emoji = "⚠️" if inv.status == "overdue" else "📋"
         due = f" (due {inv.due_date.strftime('%d/%m/%Y')})" if inv.due_date else ""
-        lines.append(
-            f"{status_emoji} {inv.invoice_number}\n"
-            f"  {inv.title}\n"
-            f"  Remaining: N{remaining:,.0f}{due}\n"
-        )
+        lines.append(f"{status_emoji} *{inv.invoice_number}*{due}")
+        lines.append(f"  {inv.title}")
+        if hasattr(inv, "items") and inv.items:
+            for item in inv.items:
+                lines.append(f"    - {item.description}: N{item.total_amount:,.0f}")
+        lines.append(f"  *Total:* N{inv.total_amount:,.0f}")
+        if inv.amount_paid > 0:
+            lines.append(f"  Paid: N{inv.amount_paid:,.0f} | Remaining: N{remaining:,.0f}")
+        lines.append("")
 
     total_outstanding = sum(
         inv.total_amount - inv.amount_paid for inv in invoices
     )
-    lines.append(f"\n*Total Outstanding: N{total_outstanding:,.0f}*")
+    lines.append(f"*Total Outstanding: N{total_outstanding:,.0f}*")
 
     buttons = [
         {"id": "det_pay", "title": "Make Payment"},

@@ -218,3 +218,75 @@ class BillingStatsOut(BaseModel):
     invoice_count: int
     paid_count: int
     overdue_count: int
+
+
+# --- Programme Fee Items ---
+
+
+class ProgrammeFeeItemCreate(BaseModel):
+    fee_type_id: uuid.UUID
+    amount: Decimal
+    term: str | None = None
+    is_optional: bool = False
+
+    @field_validator("amount")
+    @classmethod
+    def amount_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Amount must be greater than 0")
+        return v
+
+    @field_validator("term")
+    @classmethod
+    def valid_term(cls, v: str | None) -> str | None:
+        if v is not None:
+            allowed = {"first", "second", "third"}
+            if v not in allowed:
+                raise ValueError(f"Term must be one of: {', '.join(sorted(allowed))}")
+        return v
+
+
+class ProgrammeFeeItemUpdate(BaseModel):
+    amount: Decimal | None = None
+    term: str | None = None
+    is_optional: bool | None = None
+    is_active: bool | None = None
+
+
+class ProgrammeFeeItemOut(BaseModel):
+    id: uuid.UUID
+    programme_id: uuid.UUID
+    fee_type_id: uuid.UUID
+    fee_type: FeeTypeOut | None = None
+    term: str | None = None
+    amount: Decimal
+    is_optional: bool
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FeeBreakdownOut(BaseModel):
+    mandatory_items: list[ProgrammeFeeItemOut]
+    optional_items: list[ProgrammeFeeItemOut]
+    mandatory_total: Decimal
+    optional_total: Decimal
+    grand_total: Decimal
+
+
+class GenerateTermInvoicesRequest(BaseModel):
+    programme_id: uuid.UUID
+    term: str
+    academic_year: str
+    due_date: date | None = None
+    include_optional: bool = False
+
+    @field_validator("term")
+    @classmethod
+    def valid_term(cls, v: str) -> str:
+        allowed = {"first", "second", "third"}
+        if v not in allowed:
+            raise ValueError(f"Term must be one of: {', '.join(sorted(allowed))}")
+        return v
