@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.middleware.rate_limit import limiter
 from app.models.admin_user import AdminUser
 from app.models.conversation import Conversation
 from app.services.conversation_engine import log_message, process_inbound_message
@@ -94,6 +95,7 @@ async def _handle_group_reply(
 
 
 @router.post("/webhook")
+@limiter.limit("30/minute")
 async def telegram_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),

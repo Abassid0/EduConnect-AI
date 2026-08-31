@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.middleware.correlation import get_correlation_id
+from app.middleware.rate_limit import limiter
 from app.schemas.whatsapp import WhatsAppWebhookPayload
 from app.services.conversation_engine import process_inbound_message
 from app.services.whatsapp_service import wa_service
@@ -32,6 +33,7 @@ async def verify_webhook(request: Request) -> PlainTextResponse:
 
 
 @router.post("/webhook")
+@limiter.limit("30/minute")
 async def receive_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),

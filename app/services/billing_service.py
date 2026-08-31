@@ -375,6 +375,14 @@ async def process_invoice_payment(
     if not payment.invoice_id:
         return None
 
+    meta = payment.metadata_ or {}
+    if meta.get("invoice_credited"):
+        logger.info(
+            "Payment %s already credited to invoice, skipping",
+            payment.reference,
+        )
+        return None
+
     result = await db.execute(
         select(Invoice)
         .where(Invoice.id == payment.invoice_id)
@@ -392,6 +400,8 @@ async def process_invoice_payment(
         invoice.paid_at = datetime.now(timezone.utc)
     else:
         invoice.status = "partial"
+
+    payment.metadata_ = {**meta, "invoice_credited": True}
 
     await db.flush()
     logger.info(

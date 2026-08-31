@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.middleware.rate_limit import limiter
 from app.models.admin_user import AdminUser
 from app.schemas.payment import PaymentListOut, PaymentOut, PaymentVerifyOut
 from app.services import billing_service, payment_service
@@ -90,7 +91,7 @@ async def payment_callback(
             paystack_data = await payment_service.verify_paystack_transaction(
                 reference, db
             )
-            if paystack_data.get("status") == "success" and payment.status != "paid":
+            if paystack_data.get("status") == "success":
                 await db.refresh(payment)
 
             if payment.status == "paid":
@@ -124,6 +125,7 @@ async def payment_callback(
 
 
 @router.post("/webhook/paystack")
+@limiter.limit("20/minute")
 async def paystack_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -140,14 +142,20 @@ async def paystack_webhook(
     event = payload.get("event", "")
 
     if event == "charge.success":
+        reference = payload.get("data", {}).get("reference", "")
+        existing = await payment_service.get_payment_by_reference(reference, db) if reference else None
+        already_paid = existing and existing.status == "paid"
+
         payment = await payment_service.process_webhook_event(payload, db)
-        if payment and payment.status == "paid":
+        if payment and payment.status == "paid" and not already_paid:
             if payment.invoice_id:
                 await billing_service.process_invoice_payment(payment, db)
                 await send_invoice_payment_receipt(payment, db)
             else:
                 await send_payment_receipt(payment, db)
             await db.commit()
+        elif already_paid:
+            logger.info("Duplicate webhook for already-paid reference: %s", reference)
     else:
         logger.info("Ignoring Paystack event: %s", event)
 
