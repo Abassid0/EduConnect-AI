@@ -129,7 +129,8 @@ async def handle_step(
             return await _show_invoice_details(flow_data, to, db)
 
         return FlowResult(
-            flow_complete=True,
+            next_flow="main_menu",
+            next_step="show",
             flow_data={},
         )
 
@@ -142,7 +143,8 @@ async def handle_step(
                 flow_data={},
             )
         return FlowResult(
-            flow_complete=True,
+            next_flow="main_menu",
+            next_step="show",
             flow_data={},
         )
 

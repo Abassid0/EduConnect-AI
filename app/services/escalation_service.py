@@ -5,9 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
-from app.services import analytics_service, support_service
+from app.services import analytics_service, messaging, support_service
 from app.services.admin_notify import notify_escalation
-from app.services.whatsapp_service import wa_service
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +52,7 @@ async def escalate(
     description: str | None = None,
     parent_id: uuid.UUID | None = None,
     metadata: dict | None = None,
+    send_confirmation: bool = True,
 ) -> support_service.SupportTicket:
     result = await db.execute(
         select(Conversation).where(Conversation.id == conversation_id)
@@ -99,16 +99,19 @@ async def escalate(
         user_id=whatsapp_number,
     )
 
-    try:
-        await wa_service.send_text(
-            whatsapp_number,
-            f"Your request has been escalated to our support team.\n\n"
-            f"Ticket: *{ticket.ticket_number}*\n"
-            f"A team member will reach out to you shortly.\n\n"
-            f"Thank you for your patience.",
-        )
-    except Exception:
-        logger.exception("Failed to send escalation confirmation to %s", whatsapp_number)
+    if send_confirmation:
+        try:
+            channel = conversation.channel or messaging.CHANNEL_WHATSAPP
+            await messaging.send_text(
+                channel,
+                whatsapp_number,
+                f"Your request has been escalated to our support team.\n\n"
+                f"Ticket: *{ticket.ticket_number}*\n"
+                f"A team member will reach out to you shortly.\n\n"
+                f"Thank you for your patience.",
+            )
+        except Exception:
+            logger.exception("Failed to send escalation confirmation to %s", whatsapp_number)
 
     await db.flush()
     return ticket
@@ -134,7 +137,9 @@ async def resume_bot(
     await db.refresh(conversation)
 
     try:
-        await wa_service.send_text(
+        channel = conversation.channel or messaging.CHANNEL_WHATSAPP
+        await messaging.send_text(
+            channel,
             conversation.whatsapp_id,
             "Your conversation with our support team has ended.\n"
             "The bot is back online — reply *menu* anytime to continue.",

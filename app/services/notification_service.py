@@ -5,9 +5,11 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.conversation import Conversation
 from app.models.notification import Notification, NotificationPreference
 from app.models.parent import Parent
-from app.services.whatsapp_service import wa_service
+from app.services import messaging
+from app.services.messaging import CHANNEL_WHATSAPP
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,17 @@ PREF_MAP = {
 }
 
 MAX_RETRY = 1
+
+
+async def _get_channel(whatsapp_id: str, db: AsyncSession) -> str:
+    result = await db.execute(
+        select(Conversation)
+        .where(Conversation.whatsapp_id == whatsapp_id)
+        .order_by(Conversation.created_at.desc())
+        .limit(1)
+    )
+    conv = result.scalar_one_or_none()
+    return conv.channel if conv else CHANNEL_WHATSAPP
 
 
 async def get_preferences(
@@ -157,15 +170,23 @@ async def send_notification(
     db.add(notification)
     await db.flush()
 
+    channel = await _get_channel(recipient_whatsapp, db)
+
     try:
         if use_template and template_name:
-            await wa_service.send_template(
-                recipient_whatsapp,
-                template_name,
-                params=template_params,
-            )
+            from app.services.whatsapp_service import wa_service
+            if channel == CHANNEL_WHATSAPP:
+                await wa_service.send_template(
+                    recipient_whatsapp,
+                    template_name,
+                    params=template_params,
+                )
+            else:
+                from app.services.template_registry import render
+                text = render(template_name, template_params)
+                await messaging.send_text(channel, recipient_whatsapp, text)
         else:
-            await wa_service.send_text(recipient_whatsapp, message_body)
+            await messaging.send_text(channel, recipient_whatsapp, message_body)
 
         notification.status = "sent"
         notification.sent_at = datetime.now(timezone.utc)
@@ -182,24 +203,32 @@ async def send_notification(
         notification.error_message = str(exc)
         await db.flush()
 
-        return await _retry_notification(notification, use_template, template_params, db)
+        return await _retry_notification(notification, channel, use_template, template_params, db)
 
 
 async def _retry_notification(
     notification: Notification,
+    channel: str,
     use_template: bool,
     template_params: list[str] | None,
     db: AsyncSession,
 ) -> Notification | None:
     try:
         if use_template and notification.template_name:
-            await wa_service.send_template(
-                notification.recipient_whatsapp,
-                notification.template_name,
-                params=template_params,
-            )
+            if channel == CHANNEL_WHATSAPP:
+                from app.services.whatsapp_service import wa_service
+                await wa_service.send_template(
+                    notification.recipient_whatsapp,
+                    notification.template_name,
+                    params=template_params,
+                )
+            else:
+                from app.services.template_registry import render
+                text = render(notification.template_name, template_params)
+                await messaging.send_text(channel, notification.recipient_whatsapp, text)
         else:
-            await wa_service.send_text(
+            await messaging.send_text(
+                channel,
                 notification.recipient_whatsapp,
                 notification.message_body or "",
             )
@@ -221,12 +250,12 @@ async def _retry_notification(
         notification.error_message = str(exc)
         await db.flush()
 
-        await _create_support_event(notification, db)
+        await _create_support_event(notification, channel, db)
         return notification
 
 
 async def _create_support_event(
-    notification: Notification, db: AsyncSession
+    notification: Notification, channel: str, db: AsyncSession
 ) -> None:
     support_notif = Notification(
         id=uuid.uuid4(),
@@ -250,7 +279,8 @@ async def _create_support_event(
     db.add(support_notif)
 
     try:
-        await wa_service.send_text(
+        await messaging.send_text(
+            channel,
             notification.recipient_whatsapp,
             support_notif.message_body or "",
         )

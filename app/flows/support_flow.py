@@ -129,6 +129,7 @@ async def handle_step(
                 db=db,
                 description=flow_data.get("description"),
                 parent_id=parent_id,
+                send_confirmation=False,
             )
             await notify_human_agent_request(
                 ticket_number=ticket.ticket_number,

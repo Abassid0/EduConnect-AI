@@ -80,12 +80,17 @@ async def handle_step(
             return FlowResult(
                 flow_complete=True,
                 flow_data={},
-                reply=build_text_payload(to, body),
+                reply=build_text_payload(
+                    to, body + "\n\nReply 'menu' to return to the main menu."
+                ),
             )
 
         return FlowResult(
             flow_complete=True,
             flow_data={},
+            reply=build_text_payload(
+                to, "Reply 'menu' to return to the main menu."
+            ),
         )
 
     return FlowResult(

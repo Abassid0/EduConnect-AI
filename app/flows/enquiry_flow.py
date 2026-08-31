@@ -116,9 +116,12 @@ async def handle_step(
         )
 
     if step == "view_programme":
-        programme = await programme_service.get_programme_by_id(
-            user_input.strip(), db
-        )
+        try:
+            programme = await programme_service.get_programme_by_id(
+                user_input.strip(), db
+            )
+        except Exception:
+            programme = None
         if not programme:
             return FlowResult(
                 next_step="view_programme",
