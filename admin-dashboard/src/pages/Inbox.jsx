@@ -55,7 +55,7 @@ export default function Inbox() {
     };
     admin
       .inbox(params)
-      .then((r) => setConversations(r.data))
+      .then((r) => setConversations(Array.isArray(r.data) ? r.data : []))
       .catch((err) => {
         setConversations([]);
         setLoadError(true);

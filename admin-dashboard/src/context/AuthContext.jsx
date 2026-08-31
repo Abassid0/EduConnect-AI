@@ -20,7 +20,14 @@ export function AuthProvider({ children }) {
     if (token) {
       auth
         .me()
-        .then((res) => setUser(res.data))
+        .then((res) => {
+          if (res.data && typeof res.data === "object" && res.data.id) {
+            setUser(res.data);
+          } else {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+          }
+        })
         .catch(() => {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
