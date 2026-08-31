@@ -9,6 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from app.database import Base
 
 PROGRAMME_CATEGORIES = ("pre_primary", "primary", "secondary")
+FEE_STRUCTURES = ("annual", "per_term")
+TERMS = ("first", "second", "third")
+TERM_LABELS = {"first": "1st Term", "second": "2nd Term", "third": "3rd Term"}
 
 CATEGORY_LEVELS = {
     "pre_primary": ("nursery_1", "nursery_2", "kg_1", "kg_2"),
@@ -65,6 +68,13 @@ class Programme(Base):
     available_slots: Mapped[int] = mapped_column(Integer, default=0)
     instructor: Mapped[str | None] = mapped_column(String(150))
     registration_url: Mapped[str | None] = mapped_column(String(500))
+    fee_structure: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="annual"
+    )
+    term_1_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    term_2_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    term_3_fee: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    academic_year: Mapped[str | None] = mapped_column(String(20))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -80,6 +90,12 @@ class Programme(Base):
     def validate_track(self, _key: str, value: str | None) -> str | None:
         if value is not None and value not in TRACKS:
             raise ValueError(f"Invalid track: {value}")
+        return value
+
+    @validates("fee_structure")
+    def validate_fee_structure(self, _key: str, value: str) -> str:
+        if value not in FEE_STRUCTURES:
+            raise ValueError(f"Invalid fee_structure: {value}")
         return value
 
     schedules: Mapped[list["ClassSchedule"]] = relationship(

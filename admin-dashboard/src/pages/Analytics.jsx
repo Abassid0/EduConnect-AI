@@ -19,7 +19,7 @@ export default function Analytics() {
     setLoading(true);
     setLoadError(false);
     try {
-      const [fRes, vRes, rRes, rtRes, lRes, aiRes, aqRes] = await Promise.all([
+      const results = await Promise.allSettled([
         analytics.funnel({ days: d }),
         analytics.volume({ days: d, period: "daily" }),
         analytics.resolutionRate({ days: d }),
@@ -28,19 +28,33 @@ export default function Analytics() {
         analytics.ai({ days: d }),
         analytics.aiTopQueries({ days: d, limit: 10 }),
       ]);
-      setFunnel(fRes.data);
-      setVolume(vRes.data);
-      setResolution(rRes.data);
-      setResponseTime(rtRes.data);
-      setLeaderboard(lRes.data);
-      setAiStats(aiRes.data);
-      setAiQueries(aqRes.data);
+
+      const val = (i) => results[i].status === "fulfilled" ? results[i].value.data : null;
+      const authFailed = results.some(
+        (r) => r.status === "rejected" && r.reason?.response?.status === 401
+      );
+      if (authFailed) {
+        setLoadError(true);
+        showError("Session expired — please sign in again");
+        return;
+      }
+
+      setFunnel(val(0));
+      setVolume(val(1) || []);
+      setResolution(val(2));
+      setResponseTime(val(3));
+      setLeaderboard(val(4) || []);
+      setAiStats(val(5));
+      setAiQueries(val(6) || []);
+
+      const allFailed = results.every((r) => r.status === "rejected");
+      if (allFailed) {
+        setLoadError(true);
+        showError("Failed to load analytics", { label: "Retry", onClick: () => load(d) });
+      }
     } catch (err) {
       setLoadError(true);
-      const msg = err.response?.status === 401
-        ? "Session expired — please sign in again"
-        : "Failed to load analytics";
-      showError(msg, { label: "Retry", onClick: () => load(d) });
+      showError("Failed to load analytics", { label: "Retry", onClick: () => load(d) });
     } finally {
       setLoading(false);
     }

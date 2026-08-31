@@ -6,6 +6,7 @@ from pydantic import BaseModel, model_validator
 
 from app.models.programme import (
     CATEGORY_LEVELS,
+    FEE_STRUCTURES,
     PROGRAMME_CATEGORIES,
     SSS_LEVELS,
     TRACKS,
@@ -24,6 +25,11 @@ class ProgrammeOut(BaseModel):
     duration: str | None = None
     delivery_mode: str | None = None
     fee: Decimal
+    fee_structure: str = "annual"
+    term_1_fee: Decimal | None = None
+    term_2_fee: Decimal | None = None
+    term_3_fee: Decimal | None = None
+    academic_year: str | None = None
     currency: str = "NGN"
     available_slots: int = 0
     instructor: str | None = None
@@ -44,6 +50,11 @@ class ProgrammeCreate(BaseModel):
     duration: str | None = None
     delivery_mode: str | None = None
     fee: Decimal
+    fee_structure: str = "annual"
+    term_1_fee: Decimal | None = None
+    term_2_fee: Decimal | None = None
+    term_3_fee: Decimal | None = None
+    academic_year: str | None = None
     currency: str = "NGN"
     available_slots: int = 0
     instructor: str | None = None
@@ -66,6 +77,14 @@ class ProgrammeCreate(BaseModel):
                 raise ValueError(
                     "track is only applicable to SSS levels (sss_1, sss_2, sss_3)"
                 )
+        if self.fee_structure not in FEE_STRUCTURES:
+            raise ValueError(f"fee_structure must be one of {FEE_STRUCTURES}")
+        if self.fee_structure == "per_term":
+            if not all([self.term_1_fee, self.term_2_fee, self.term_3_fee]):
+                raise ValueError(
+                    "term_1_fee, term_2_fee, and term_3_fee are required "
+                    "when fee_structure is 'per_term'"
+                )
         return self
 
 
@@ -80,6 +99,11 @@ class ProgrammeUpdate(BaseModel):
     duration: str | None = None
     delivery_mode: str | None = None
     fee: Decimal | None = None
+    fee_structure: str | None = None
+    term_1_fee: Decimal | None = None
+    term_2_fee: Decimal | None = None
+    term_3_fee: Decimal | None = None
+    academic_year: str | None = None
     available_slots: int | None = None
     instructor: str | None = None
     is_active: bool | None = None
@@ -97,6 +121,8 @@ class ProgrammeUpdate(BaseModel):
         if self.track is not None:
             if self.track not in TRACKS:
                 raise ValueError(f"track must be one of {TRACKS}")
+        if self.fee_structure is not None and self.fee_structure not in FEE_STRUCTURES:
+            raise ValueError(f"fee_structure must be one of {FEE_STRUCTURES}")
         return self
 
 

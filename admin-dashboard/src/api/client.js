@@ -175,9 +175,9 @@ export const staff = {
 };
 
 export const programmes = {
-  list: (params) => client.get("/programmes", { params }),
+  list: (params) => client.get("/programmes/", { params }),
   get: (id) => client.get(`/programmes/${id}`),
-  create: (data) => client.post("/programmes", data),
+  create: (data) => client.post("/programmes/", data),
   update: (id, data) => client.patch(`/programmes/${id}`, data),
   categories: () => client.get("/programmes/categories/"),
   levels: () => client.get("/programmes/levels/"),

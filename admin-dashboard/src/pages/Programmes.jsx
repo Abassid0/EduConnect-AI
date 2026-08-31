@@ -58,6 +58,11 @@ const CATEGORY_LABELS = Object.fromEntries(
   CATEGORIES.map((c) => [c.value, c.label])
 );
 
+const FEE_STRUCTURES = [
+  { value: "annual", label: "Annual" },
+  { value: "per_term", label: "Per Term" },
+];
+
 const EMPTY_FORM = {
   name: "",
   description: "",
@@ -67,6 +72,11 @@ const EMPTY_FORM = {
   age_range_min: "",
   age_range_max: "",
   fee: "",
+  fee_structure: "annual",
+  term_1_fee: "",
+  term_2_fee: "",
+  term_3_fee: "",
+  academic_year: "",
   currency: "NGN",
   duration: "",
   delivery_mode: "",
@@ -248,8 +258,19 @@ export default function Programmes() {
                 <td className="px-6 py-4 text-sm text-gray-600">
                   {TRACK_LABELS[p.track] || p.track || "—"}
                 </td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                  {p.currency} {Number(p.fee).toLocaleString()}
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  {p.fee_structure === "per_term" ? (
+                    <div>
+                      <span className="font-medium">Per Term</span>
+                      <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
+                        <div>T1: {p.currency} {Number(p.term_1_fee).toLocaleString()}</div>
+                        <div>T2: {p.currency} {Number(p.term_2_fee).toLocaleString()}</div>
+                        <div>T3: {p.currency} {Number(p.term_3_fee).toLocaleString()}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="font-medium">{p.currency} {Number(p.fee).toLocaleString()}</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">
                   {p.available_slots}
@@ -341,6 +362,11 @@ function ProgrammeModal({ programme, onClose, onSaved, setError }) {
           age_range_min: programme.age_range_min ?? "",
           age_range_max: programme.age_range_max ?? "",
           fee: programme.fee || "",
+          fee_structure: programme.fee_structure || "annual",
+          term_1_fee: programme.term_1_fee ?? "",
+          term_2_fee: programme.term_2_fee ?? "",
+          term_3_fee: programme.term_3_fee ?? "",
+          academic_year: programme.academic_year || "",
           currency: programme.currency || "NGN",
           duration: programme.duration || "",
           delivery_mode: programme.delivery_mode || "",
@@ -380,6 +406,11 @@ function ProgrammeModal({ programme, onClose, onSaved, setError }) {
         age_range_min: form.age_range_min === "" ? null : Number(form.age_range_min),
         age_range_max: form.age_range_max === "" ? null : Number(form.age_range_max),
         fee: Number(form.fee),
+        fee_structure: form.fee_structure,
+        term_1_fee: form.fee_structure === "per_term" && form.term_1_fee !== "" ? Number(form.term_1_fee) : null,
+        term_2_fee: form.fee_structure === "per_term" && form.term_2_fee !== "" ? Number(form.term_2_fee) : null,
+        term_3_fee: form.fee_structure === "per_term" && form.term_3_fee !== "" ? Number(form.term_3_fee) : null,
+        academic_year: form.academic_year || null,
         currency: form.currency,
         duration: form.duration || null,
         delivery_mode: form.delivery_mode || null,
@@ -527,7 +558,35 @@ function ProgrammeModal({ programme, onClose, onSaved, setError }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Fee (NGN) *
+                Fee Structure *
+              </label>
+              <select
+                value={form.fee_structure}
+                onChange={(e) => setForm({ ...form, fee_structure: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              >
+                {FEE_STRUCTURES.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Academic Year
+              </label>
+              <input
+                value={form.academic_year}
+                onChange={(e) => setForm({ ...form, academic_year: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                placeholder="e.g. 2025/2026"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                {form.fee_structure === "per_term" ? "Total Annual Fee (NGN) *" : "Fee (NGN) *"}
               </label>
               <input
                 type="number"
@@ -554,6 +613,53 @@ function ProgrammeModal({ programme, onClose, onSaved, setError }) {
               />
             </div>
           </div>
+
+          {form.fee_structure === "per_term" && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  1st Term Fee *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  step="0.01"
+                  value={form.term_1_fee}
+                  onChange={(e) => setForm({ ...form, term_1_fee: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  2nd Term Fee *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  step="0.01"
+                  value={form.term_2_fee}
+                  onChange={(e) => setForm({ ...form, term_2_fee: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  3rd Term Fee *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  step="0.01"
+                  value={form.term_3_fee}
+                  onChange={(e) => setForm({ ...form, term_3_fee: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
