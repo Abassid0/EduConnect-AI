@@ -255,6 +255,56 @@ async def get_invoice_by_number(
     return result.scalar_one_or_none()
 
 
+def normalise_invoice_number(raw: str) -> str | None:
+    """Turn what a parent typed into a canonical INV-YYYYMMDD-NNNNN number.
+
+    Accepts the number with or without the INV- prefix, in any case, with
+    stray spaces or a trailing full stop. Returns None if it cannot be
+    read as an invoice number, so callers can tell "malformed" apart from
+    "not found".
+    """
+    if not raw:
+        return None
+
+    cleaned = "".join(raw.split()).upper().strip(".,")
+    if not cleaned:
+        return None
+
+    # Drop an optional INV prefix, however the parent separated it, then
+    # judge what remains purely on its digits.
+    if cleaned.startswith("INV"):
+        cleaned = cleaned[3:].lstrip("-")
+
+    digits = cleaned.replace("-", "")
+    if len(digits) != 13 or not digits.isdigit():
+        return None
+
+    return f"INV-{digits[:8]}-{digits[8:]}"
+
+
+async def get_invoice_by_number_for_parent(
+    invoice_number: str,
+    parent_id: uuid.UUID,
+    db: AsyncSession,
+) -> Invoice | None:
+    """Look up one of this parent's invoices by number.
+
+    Scoped to parent_id, so an invoice number belonging to another family
+    can never be read through this path.
+    """
+    normalised = normalise_invoice_number(invoice_number)
+    if not normalised:
+        return None
+
+    result = await db.execute(
+        select(Invoice).where(
+            Invoice.invoice_number == normalised,
+            Invoice.parent_id == parent_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def cancel_invoice(
     invoice_id: uuid.UUID, db: AsyncSession
 ) -> Invoice | None:
@@ -374,6 +424,15 @@ async def process_invoice_payment(
 ) -> Invoice | None:
     if not payment.invoice_id:
         return None
+
+    # Lock the payment row before reading the credited flag. The Paystack
+    # webhook and the browser callback routinely arrive at the same moment;
+    # a check made outside the lock lets both callers pass it and credit the
+    # invoice twice for one payment.
+    locked = await db.execute(
+        select(Payment).where(Payment.id == payment.id).with_for_update()
+    )
+    payment = locked.scalar_one_or_none() or payment
 
     meta = payment.metadata_ or {}
     if meta.get("invoice_credited"):

@@ -152,6 +152,27 @@ async def _check_completion(plan: PaymentPlan, db: AsyncSession) -> None:
         await db.flush()
 
 
+async def get_installment_in_plan(
+    plan_id: uuid.UUID,
+    installment_id: uuid.UUID,
+    db: AsyncSession,
+) -> PaymentPlanInstallment | None:
+    """Fetch an installment only if it really belongs to the given plan.
+
+    A URL like /plans/{plan_id}/installments/{inst_id} asserts a
+    relationship between the two IDs. Nothing enforces that on its own, so
+    callers use this to verify the pair before mutating the installment —
+    otherwise a mismatched pair would silently update another plan's record.
+    """
+    result = await db.execute(
+        select(PaymentPlanInstallment).where(
+            PaymentPlanInstallment.id == installment_id,
+            PaymentPlanInstallment.plan_id == plan_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def mark_installment_paid(
     installment_id: uuid.UUID, db: AsyncSession
 ) -> PaymentPlanInstallment:

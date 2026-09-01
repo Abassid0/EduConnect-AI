@@ -82,6 +82,45 @@ def _ticket_text(
     return "\n".join(lines)
 
 
+async def notify_refund(
+    reference: str,
+    event: str,
+    amount: str,
+    invoice_number: str | None = None,
+    parent_name: str | None = None,
+) -> None:
+    """Alert admins that Paystack reported a refund, chargeback or reversal.
+
+    Money has left the account, but nothing is clawed back automatically —
+    the invoice still shows as paid. A human must reconcile it.
+    """
+    lines = [
+        "*Refund / Chargeback*",
+        "",
+        f"Event: {event}",
+        f"Reference: {reference}",
+        f"Amount: N{amount}",
+    ]
+    if invoice_number:
+        lines.append(f"Invoice: {invoice_number}")
+    if parent_name:
+        lines.append(f"Parent: {parent_name}")
+    lines.append("")
+    lines.append(
+        "The invoice has NOT been adjusted automatically. "
+        "Please review and reconcile."
+    )
+    link = _dashboard_link("/billing")
+    if link:
+        lines.append(link)
+
+    text = "\n".join(lines)
+    if settings.TELEGRAM_ADMIN_CHAT_ID:
+        await _send_telegram(settings.TELEGRAM_ADMIN_CHAT_ID, text)
+    if settings.WHATSAPP_ADMIN_PHONE:
+        await _send_whatsapp(settings.WHATSAPP_ADMIN_PHONE, text)
+
+
 async def notify_new_ticket(
     ticket_number: str,
     department: str,

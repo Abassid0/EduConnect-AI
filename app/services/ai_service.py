@@ -84,30 +84,29 @@ TOOLS = [
     },
     {
         "name": "get_payment_status",
-        "description": "Check payment status for a parent's children. Returns pending and completed payments.",
+        "description": (
+            "Check payment status for the children of the parent you are currently "
+            "chatting with. Always scoped to the current chat — it cannot look up "
+            "any other parent, and takes no phone number."
+        ),
         "input_schema": {
             "type": "object",
-            "properties": {
-                "parent_phone": {
-                    "type": "string",
-                    "description": "The parent's WhatsApp phone number",
-                },
-            },
-            "required": ["parent_phone"],
+            "properties": {},
+            "required": [],
         },
     },
     {
         "name": "get_student_info",
-        "description": "Look up a parent's registered children and their enrolment status.",
+        "description": (
+            "Look up the registered children of the parent you are currently "
+            "chatting with, and their enrolment status. Always scoped to the "
+            "current chat — it cannot look up any other parent, and takes no "
+            "phone number."
+        ),
         "input_schema": {
             "type": "object",
-            "properties": {
-                "parent_phone": {
-                    "type": "string",
-                    "description": "The parent's WhatsApp phone number",
-                },
-            },
-            "required": ["parent_phone"],
+            "properties": {},
+            "required": [],
         },
     },
     {
@@ -119,10 +118,6 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "parent_phone": {
-                    "type": "string",
-                    "description": "The parent's WhatsApp phone number",
-                },
                 "child_name": {
                     "type": "string",
                     "description": "The child's full name",
@@ -132,7 +127,7 @@ TOOLS = [
                     "description": "The programme to register for",
                 },
             },
-            "required": ["parent_phone", "child_name", "programme_id"],
+            "required": ["child_name", "programme_id"],
         },
     },
     {
@@ -365,12 +360,22 @@ async def _tool_create_registration_intent(
 
 
 async def _tool_get_class_schedule(
-    db: AsyncSession, student_id: str
+    db: AsyncSession, parent_phone: str, student_id: str
 ) -> list[dict]:
     try:
         sid = uuid.UUID(student_id)
     except ValueError:
         return [{"error": "Invalid student ID"}]
+
+    # The student must belong to the parent in this chat — never trust a
+    # student_id on its own.
+    owner_result = await db.execute(
+        select(Student.id)
+        .join(Parent, Student.parent_id == Parent.id)
+        .where(Student.id == sid, Parent.whatsapp_number == parent_phone)
+    )
+    if owner_result.scalar_one_or_none() is None:
+        return [{"error": "Student not found"}]
 
     enr_result = await db.execute(
         select(Enrollment)
@@ -418,8 +423,19 @@ TOOL_DISPATCH = {
 }
 
 
+# Tools that read or act on a specific parent's data. Their parent_phone is
+# always taken from the verified chat identity, never from the model's
+# arguments — otherwise a caller could ask for another family's records.
+IDENTITY_SCOPED_TOOLS = {
+    "get_payment_status",
+    "get_student_info",
+    "create_registration_intent",
+    "get_class_schedule",
+}
+
+
 async def _execute_tool(
-    tool_name: str, tool_input: dict, db: AsyncSession
+    tool_name: str, tool_input: dict, db: AsyncSession, whatsapp_number: str
 ) -> str:
     if tool_name == "get_support_departments":
         import json
@@ -429,8 +445,17 @@ async def _execute_tool(
     if not handler:
         return '{"error": "Unknown function"}'
 
+    args = dict(tool_input)
+    if tool_name in IDENTITY_SCOPED_TOOLS:
+        if args.get("parent_phone") not in (None, whatsapp_number):
+            logger.warning(
+                "Tool %s requested parent_phone that is not the chat owner — overriding",
+                tool_name,
+            )
+        args["parent_phone"] = whatsapp_number
+
     try:
-        result = await handler(db, **tool_input)
+        result = await handler(db, **args)
         import json
         return json.dumps(result, default=str)
     except Exception:
@@ -521,7 +546,9 @@ async def handle_ai_query(
 
             tool_results = []
             for block in tool_blocks:
-                tool_output = await _execute_tool(block.name, block.input, db)
+                tool_output = await _execute_tool(
+                    block.name, block.input, db, whatsapp_number
+                )
                 tools_called.append({
                     "name": block.name,
                     "input": block.input,

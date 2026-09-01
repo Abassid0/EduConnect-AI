@@ -1,3 +1,4 @@
+import hmac
 import logging
 import re
 
@@ -100,10 +101,13 @@ async def telegram_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
-    if settings.TELEGRAM_WEBHOOK_SECRET:
-        token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-        if token != settings.TELEGRAM_WEBHOOK_SECRET:
-            raise HTTPException(status_code=403, detail="Invalid secret token")
+    if not settings.TELEGRAM_WEBHOOK_SECRET:
+        logger.error("TELEGRAM_WEBHOOK_SECRET not configured — rejecting webhook")
+        raise HTTPException(status_code=500, detail="Server misconfigured")
+
+    token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not hmac.compare_digest(token, settings.TELEGRAM_WEBHOOK_SECRET):
+        raise HTTPException(status_code=403, detail="Invalid secret token")
 
     payload = await request.json()
 
@@ -161,7 +165,10 @@ async def telegram_webhook(
 
 
 @router.post("/setup")
-async def setup_telegram_webhook(request: Request) -> dict:
+async def setup_telegram_webhook(
+    request: Request,
+    _user: AdminUser = Depends(get_current_user),
+) -> dict:
     body = await request.json()
     webhook_url = body.get("url")
     if not webhook_url:
@@ -172,13 +179,17 @@ async def setup_telegram_webhook(request: Request) -> dict:
 
 
 @router.delete("/setup")
-async def remove_telegram_webhook() -> dict:
+async def remove_telegram_webhook(
+    _user: AdminUser = Depends(get_current_user),
+) -> dict:
     result = await telegram_service.delete_webhook()
     return result
 
 
 @router.get("/me")
-async def get_bot_info() -> dict:
+async def get_bot_info(
+    _user: AdminUser = Depends(get_current_user),
+) -> dict:
     result = await telegram_service.get_me()
     return result
 

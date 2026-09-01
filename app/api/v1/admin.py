@@ -35,6 +35,11 @@ from app.utils.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
+# Roles allowed to see payment records. Kept in step with the guards on
+# /payments/* and /billing/*, so every route that can surface payment data
+# applies the same rule.
+FINANCE_ROLES = ("super_admin", "admin", "finance")
+
 
 # --- Auth: current user ---
 
@@ -114,19 +119,24 @@ async def customer_profile(
             ],
         })
 
-    payments = await payment_service.get_payments_for_student_list(
-        [s.id for s in students], db
-    )
-    payment_dicts = [
-        {
-            "id": str(p.id),
-            "reference": p.reference,
-            "amount": str(p.amount),
-            "status": p.status,
-            "paid_at": p.paid_at.isoformat() if p.paid_at else None,
-        }
-        for p in payments
-    ]
+    # Payment records are finance-scoped, the same as /payments/* and
+    # /billing/*. The dashboard already hides this tab from other roles;
+    # enforce it here too so the profile endpoint isn't a way around that.
+    payment_dicts: list[dict] = []
+    if current_user.role in FINANCE_ROLES:
+        payments = await payment_service.get_payments_for_student_list(
+            [s.id for s in students], db
+        )
+        payment_dicts = [
+            {
+                "id": str(p.id),
+                "reference": p.reference,
+                "amount": str(p.amount),
+                "status": p.status,
+                "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+            }
+            for p in payments
+        ]
 
     tickets = await support_service.get_tickets(db, parent_id=parent.id, limit=20)
     ticket_dicts = [

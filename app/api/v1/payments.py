@@ -11,8 +11,8 @@ from app.database import get_db
 from app.middleware.rate_limit import limiter
 from app.models.admin_user import AdminUser
 from app.schemas.payment import PaymentListOut, PaymentOut, PaymentVerifyOut
-from app.services import billing_service, payment_service
-from app.utils.auth import get_current_user
+from app.services import admin_notify, billing_service, payment_service
+from app.utils.auth import require_role
 from app.utils.receipt import send_invoice_payment_receipt, send_payment_receipt
 from app.utils.signature_verify import verify_paystack_signature
 
@@ -124,6 +124,57 @@ async def payment_callback(
     return HTMLResponse(html)
 
 
+# Paystack events that mean money went back out. None of them adjust an
+# invoice automatically — reversing a credit has accounting consequences a
+# human should decide on — so they raise an alert instead.
+REFUND_EVENTS = frozenset({
+    "charge.refunded",
+    "refund.processed",
+    "refund.failed",
+    "refund.pending",
+    "charge.dispute.create",
+    "charge.dispute.remind",
+})
+
+
+async def _handle_refund_event(
+    event: str, payload: dict, db: AsyncSession
+) -> None:
+    data = payload.get("data", {}) or {}
+    reference = (
+        data.get("reference")
+        or (data.get("transaction") or {}).get("reference")
+        or ""
+    )
+
+    amount_raw = data.get("amount")
+    try:
+        amount = f"{Decimal(str(amount_raw)) / 100:,.2f}" if amount_raw else "unknown"
+    except Exception:
+        amount = "unknown"
+
+    invoice_number = None
+    parent_name = None
+    if reference:
+        payment = await payment_service.get_payment_by_reference(reference, db)
+        if payment and payment.invoice_id:
+            invoice = await billing_service.get_invoice(payment.invoice_id, db)
+            if invoice:
+                invoice_number = invoice.invoice_number
+
+    logger.warning(
+        "Paystack %s received for reference %s — invoice NOT adjusted automatically",
+        event, reference or "(none)",
+    )
+    await admin_notify.notify_refund(
+        reference=reference or "(none)",
+        event=event,
+        amount=amount,
+        invoice_number=invoice_number,
+        parent_name=parent_name,
+    )
+
+
 @router.post("/webhook/paystack")
 @limiter.limit("20/minute")
 async def paystack_webhook(
@@ -156,6 +207,8 @@ async def paystack_webhook(
             await db.commit()
         elif already_paid:
             logger.info("Duplicate webhook for already-paid reference: %s", reference)
+    elif event in REFUND_EVENTS:
+        await _handle_refund_event(event, payload, db)
     else:
         logger.info("Ignoring Paystack event: %s", event)
 
@@ -167,7 +220,9 @@ async def list_payments(
     status: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> list[PaymentListOut]:
     payments = await payment_service.get_all_payments(
@@ -179,7 +234,9 @@ async def list_payments(
 @router.get("/{payment_id}", response_model=PaymentOut)
 async def get_payment(
     payment_id: uuid.UUID,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> PaymentOut:
     payment = await payment_service.get_payment_by_id(payment_id, db)
@@ -191,7 +248,9 @@ async def get_payment(
 @router.get("/student/{student_id}", response_model=list[PaymentListOut])
 async def list_student_payments(
     student_id: uuid.UUID,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> list[PaymentListOut]:
     payments = await payment_service.get_payments_for_student(student_id, db)
@@ -201,7 +260,9 @@ async def list_student_payments(
 @router.get("/verify/{reference}", response_model=PaymentVerifyOut)
 async def verify_payment(
     reference: str,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> PaymentVerifyOut:
     payment = await payment_service.get_payment_by_reference(reference, db)

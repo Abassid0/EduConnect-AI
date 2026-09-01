@@ -1,7 +1,8 @@
+import re
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -35,10 +36,21 @@ class AdminUserOut(BaseModel):
 
 class AdminUserCreate(BaseModel):
     email: EmailStr
-    full_name: str
-    password: str
+    full_name: str = Field(min_length=2, max_length=100)
+    password: str = Field(min_length=8, max_length=128)
     role: str = "support_agent"
-    department: str | None = None
+    department: str | None = Field(default=None, max_length=100)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        return v
 
 
 class SupportTicketOut(BaseModel):
@@ -95,7 +107,7 @@ class InternalNoteOut(BaseModel):
 
 
 class InternalNoteCreate(BaseModel):
-    content: str
+    content: str = Field(min_length=1, max_length=4096)
     conversation_id: uuid.UUID | None = None
 
 
@@ -113,10 +125,10 @@ class ConversationInboxOut(BaseModel):
 
 
 class SendReplyRequest(BaseModel):
-    whatsapp_number: str
-    message: str
+    whatsapp_number: str = Field(min_length=10, max_length=20)
+    message: str = Field(min_length=1, max_length=4096)
     msg_type: str = "text"
-    template_name: str | None = None
+    template_name: str | None = Field(default=None, max_length=100)
     template_params: list[str] | None = None
 
 

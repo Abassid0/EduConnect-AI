@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.admin_user import AdminUser
 from app.services import payment_plan_service
-from app.utils.auth import get_current_user, require_role
+from app.utils.auth import require_role
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,9 @@ async def list_plans(
     status: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> list[PlanOut]:
     plans = await payment_plan_service.list_plans(
@@ -118,7 +120,9 @@ async def list_plans(
 @router.get("/plans/{plan_id}", response_model=PlanOut)
 async def get_plan(
     plan_id: uuid.UUID,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> PlanOut:
     plan = await payment_plan_service.get_plan(plan_id, db)
@@ -130,7 +134,9 @@ async def get_plan(
 @router.get("/parent/{parent_id}/plan", response_model=PlanOut | None)
 async def parent_active_plan(
     parent_id: uuid.UUID,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> PlanOut | None:
     plan = await payment_plan_service.get_active_plan_for_parent(parent_id, db)
@@ -140,7 +146,9 @@ async def parent_active_plan(
 @router.get("/invoices/{invoice_id}/plan", response_model=PlanOut | None)
 async def invoice_plan(
     invoice_id: uuid.UUID,
-    _user: AdminUser = Depends(get_current_user),
+    _user: AdminUser = Depends(
+        require_role("super_admin", "admin", "finance")
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> PlanOut | None:
     plan = await payment_plan_service.get_plan_for_invoice(invoice_id, db)
@@ -168,6 +176,11 @@ async def mark_installment_paid(
     _user: AdminUser = Depends(require_role("super_admin", "admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    if await payment_plan_service.get_installment_in_plan(plan_id, inst_id, db) is None:
+        raise HTTPException(
+            status_code=404, detail="Installment not found in this plan"
+        )
+
     try:
         inst = await payment_plan_service.mark_installment_paid(inst_id, db)
     except ValueError as e:
@@ -187,6 +200,11 @@ async def waive_installment(
     _user: AdminUser = Depends(require_role("super_admin", "admin")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    if await payment_plan_service.get_installment_in_plan(plan_id, inst_id, db) is None:
+        raise HTTPException(
+            status_code=404, detail="Installment not found in this plan"
+        )
+
     try:
         inst = await payment_plan_service.waive_installment(inst_id, db)
     except ValueError as e:

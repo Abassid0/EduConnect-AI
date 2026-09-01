@@ -3,7 +3,9 @@ __pycache__/
 *$py.class
 *.so
 .env
-.env.migrate
+.env.*
+!.env.example
+!.env.*.example
 .venv/
 venv/
 env/
@@ -19,6 +21,7 @@ htmlcov/
 node_modules/
 admin-dashboard/dist/
 admin-dashboard/build/
+.wrangler/
 *.log
 .DS_Store
 Thumbs.db

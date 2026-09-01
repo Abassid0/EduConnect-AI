@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.programme import (
     CATEGORY_LEVELS,
@@ -40,24 +40,24 @@ class ProgrammeOut(BaseModel):
 
 
 class ProgrammeCreate(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
     category: str
     age_range_min: int | None = None
     age_range_max: int | None = None
     level: str | None = None
     track: str | None = None
-    duration: str | None = None
-    delivery_mode: str | None = None
+    duration: str | None = Field(default=None, max_length=100)
+    delivery_mode: str | None = Field(default=None, max_length=50)
     fee: Decimal
     fee_structure: str = "annual"
     term_1_fee: Decimal | None = None
     term_2_fee: Decimal | None = None
     term_3_fee: Decimal | None = None
-    academic_year: str | None = None
+    academic_year: str | None = Field(default=None, max_length=20)
     currency: str = "NGN"
     available_slots: int = 0
-    instructor: str | None = None
+    instructor: str | None = Field(default=None, max_length=200)
     is_active: bool = True
 
     @model_validator(mode="after")
@@ -89,23 +89,23 @@ class ProgrammeCreate(BaseModel):
 
 
 class ProgrammeUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
     category: str | None = None
     age_range_min: int | None = None
     age_range_max: int | None = None
     level: str | None = None
     track: str | None = None
-    duration: str | None = None
-    delivery_mode: str | None = None
+    duration: str | None = Field(default=None, max_length=100)
+    delivery_mode: str | None = Field(default=None, max_length=50)
     fee: Decimal | None = None
     fee_structure: str | None = None
     term_1_fee: Decimal | None = None
     term_2_fee: Decimal | None = None
     term_3_fee: Decimal | None = None
-    academic_year: str | None = None
+    academic_year: str | None = Field(default=None, max_length=20)
     available_slots: int | None = None
-    instructor: str | None = None
+    instructor: str | None = Field(default=None, max_length=200)
     is_active: bool | None = None
 
     @model_validator(mode="after")

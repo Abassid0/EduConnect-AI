@@ -12,7 +12,7 @@ from app.schemas.notification import (
     NotificationPreferenceUpdate,
 )
 from app.services import notification_service, registration_service
-from app.utils.auth import get_current_user
+from app.utils.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -23,6 +23,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 )
 async def get_preferences(
     whatsapp_number: str,
+    _user: AdminUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationPreferenceOut:
     parent = await registration_service.get_parent_by_whatsapp(
@@ -44,6 +45,7 @@ async def get_preferences(
 async def update_preferences(
     whatsapp_number: str,
     data: NotificationPreferenceUpdate,
+    _user: AdminUser = Depends(require_role("super_admin", "admin")),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationPreferenceOut:
     parent = await registration_service.get_parent_by_whatsapp(

@@ -12,8 +12,10 @@ from app.api.v1 import router as v1_router
 from app.config import settings
 from app.database import async_session_factory
 from app.middleware.audit_log import AuditLogMiddleware
+from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.middleware.rate_limit import limiter
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
@@ -21,6 +23,13 @@ logging.basicConfig(
     force=True,
 )
 logger = logging.getLogger(__name__)
+
+if settings.APP_ENV != "development":
+    if settings.SECRET_KEY in ("change-me", "") or len(settings.SECRET_KEY) < 32:
+        raise RuntimeError(
+            "SECRET_KEY must be set to a random string of at least 32 characters "
+            "in production. Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
 
 app = FastAPI(
     title="EduConnect AI",
@@ -33,6 +42,8 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(AuditLogMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 cors_origins = ["*"] if settings.APP_ENV == "development" else (
@@ -43,8 +54,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 app.include_router(v1_router)

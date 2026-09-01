@@ -1,18 +1,18 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.academic_event import EVENT_TYPES
 
 
 class AcademicEventCreate(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=200)
     event_type: str = "custom"
     start_date: date
     end_date: date | None = None
-    description: str | None = None
-    school_term: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
+    school_term: str | None = Field(default=None, max_length=50)
     is_published: bool = True
 
     @field_validator("title")
@@ -32,12 +32,12 @@ class AcademicEventCreate(BaseModel):
 
 
 class AcademicEventUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, max_length=200)
     event_type: str | None = None
     start_date: date | None = None
     end_date: date | None = None
-    description: str | None = None
-    school_term: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
+    school_term: str | None = Field(default=None, max_length=50)
     is_published: bool | None = None
 
 

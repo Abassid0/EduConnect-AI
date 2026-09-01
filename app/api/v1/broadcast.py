@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -16,10 +16,10 @@ router = APIRouter(prefix="/broadcasts", tags=["broadcasts"])
 
 
 class BroadcastCreate(BaseModel):
-    title: str
-    body: str
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1, max_length=4096)
     segment_type: str = "all"
-    segment_value: str | None = None
+    segment_value: str | None = Field(default=None, max_length=200)
 
 
 class BroadcastOut(BaseModel):

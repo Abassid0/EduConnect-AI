@@ -3,15 +3,15 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # --- Fee Types ---
 
 
 class FeeTypeCreate(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=500)
     category: str = "custom"
     default_amount: Decimal | None = None
     currency: str = "NGN"
@@ -39,8 +39,8 @@ class FeeTypeCreate(BaseModel):
 
 
 class FeeTypeUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=500)
     category: str | None = None
     default_amount: Decimal | None = None
     is_recurring: bool | None = None
@@ -68,7 +68,7 @@ class FeeTypeOut(BaseModel):
 
 class InvoiceItemCreate(BaseModel):
     fee_type_id: uuid.UUID
-    description: str
+    description: str = Field(min_length=1, max_length=300)
     quantity: int = 1
     unit_amount: Decimal
 
@@ -110,11 +110,11 @@ class InvoiceItemOut(BaseModel):
 class InvoiceCreate(BaseModel):
     parent_id: uuid.UUID
     student_id: uuid.UUID | None = None
-    title: str
-    academic_term: str | None = None
+    title: str = Field(min_length=1, max_length=300)
+    academic_term: str | None = Field(default=None, max_length=50)
     items: list[InvoiceItemCreate]
     due_date: date | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=2000)
 
     @field_validator("title")
     @classmethod
@@ -134,11 +134,11 @@ class InvoiceCreate(BaseModel):
 
 class InvoiceBulkCreate(BaseModel):
     student_ids: list[uuid.UUID]
-    title: str
-    academic_term: str | None = None
+    title: str = Field(min_length=1, max_length=300)
+    academic_term: str | None = Field(default=None, max_length=50)
     items: list[InvoiceItemCreate]
     due_date: date | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=2000)
 
     @field_validator("student_ids")
     @classmethod
@@ -196,7 +196,7 @@ class InvoiceListOut(BaseModel):
 
 
 class InvoiceSendRequest(BaseModel):
-    custom_message: str | None = None
+    custom_message: str | None = Field(default=None, max_length=2000)
 
 
 # --- Balance & Stats ---
@@ -279,7 +279,7 @@ class FeeBreakdownOut(BaseModel):
 class GenerateTermInvoicesRequest(BaseModel):
     programme_id: uuid.UUID
     term: str
-    academic_year: str
+    academic_year: str = Field(max_length=20)
     due_date: date | None = None
     include_optional: bool = False
 
