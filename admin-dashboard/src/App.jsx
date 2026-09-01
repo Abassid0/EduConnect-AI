@@ -1,18 +1,23 @@
+import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Analytics from "./pages/Analytics";
-import Billing from "./pages/Billing";
-import Broadcast from "./pages/Broadcast";
-import Calendar from "./pages/Calendar";
-import ConversationView from "./pages/ConversationView";
-import Inbox from "./pages/Inbox";
+import RouteFallback from "./components/RouteFallback";
 import Login from "./pages/Login";
-import Permissions from "./pages/Permissions";
-import Programmes from "./pages/Programmes";
-import ReportCards from "./pages/ReportCards";
-import Staff from "./pages/Staff";
-import Tickets from "./pages/Tickets";
+
+// Login and Layout stay eager — they are the first thing painted. Every other
+// page is fetched on demand, so signing in no longer costs the whole app.
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Billing = lazy(() => import("./pages/Billing"));
+const Broadcast = lazy(() => import("./pages/Broadcast"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const ConversationView = lazy(() => import("./pages/ConversationView"));
+const Inbox = lazy(() => import("./pages/Inbox"));
+const Permissions = lazy(() => import("./pages/Permissions"));
+const Programmes = lazy(() => import("./pages/Programmes"));
+const ReportCards = lazy(() => import("./pages/ReportCards"));
+const Staff = lazy(() => import("./pages/Staff"));
+const Tickets = lazy(() => import("./pages/Tickets"));
 
 export default function App() {
   return (
@@ -27,20 +32,94 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/inbox" replace />} />
-        <Route path="inbox" element={<Inbox />} />
+        <Route
+          path="inbox"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Inbox />
+            </Suspense>
+          }
+        />
         <Route
           path="conversations/:conversationId"
-          element={<ConversationView />}
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <ConversationView />
+            </Suspense>
+          }
         />
-        <Route path="tickets" element={<Tickets />} />
-        <Route path="billing" element={<Billing />} />
-        <Route path="programmes" element={<Programmes />} />
-        <Route path="broadcast" element={<Broadcast />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="permissions" element={<Permissions />} />
-        <Route path="report-cards" element={<ReportCards />} />
-        <Route path="staff" element={<Staff />} />
-        <Route path="analytics" element={<Analytics />} />
+        <Route
+          path="tickets"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Tickets />
+            </Suspense>
+          }
+        />
+        <Route
+          path="billing"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Billing />
+            </Suspense>
+          }
+        />
+        <Route
+          path="programmes"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Programmes />
+            </Suspense>
+          }
+        />
+        <Route
+          path="broadcast"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Broadcast />
+            </Suspense>
+          }
+        />
+        <Route
+          path="calendar"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Calendar />
+            </Suspense>
+          }
+        />
+        <Route
+          path="permissions"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Permissions />
+            </Suspense>
+          }
+        />
+        <Route
+          path="report-cards"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <ReportCards />
+            </Suspense>
+          }
+        />
+        <Route
+          path="staff"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Staff />
+            </Suspense>
+          }
+        />
+        <Route
+          path="analytics"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Analytics />
+            </Suspense>
+          }
+        />
       </Route>
     </Routes>
   );

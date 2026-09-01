@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { billing as billingApi, paymentPlans as plansApi } from "../api/client";
 import StatusBadge from "../components/StatusBadge";
 import { useToast } from "../components/Toast";
+import { TableSkeleton } from "../components/RouteFallback";
 
 const TABS = ["Invoices", "Fee Types", "Revenue"];
 const INVOICE_STATUSES = ["", "unpaid", "partial", "paid", "overdue", "on_plan", "cancelled"];
@@ -877,12 +878,11 @@ function StatCard({ label, value }) {
   );
 }
 
+// Table-shaped placeholder rather than a centred spinner: a spinner occupies
+// ~128px and is then replaced by several hundred px of table, shifting
+// everything below it on every load and refetch.
 function LoadingSpinner() {
-  return (
-    <div className="flex justify-center py-16">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
-    </div>
-  );
+  return <TableSkeleton />;
 }
 
 function EmptyState({ message }) {

@@ -6,9 +6,44 @@
     <meta name="theme-color" content="#082f49" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230ea5e9'/><text x='50' y='72' font-size='45' font-weight='bold' text-anchor='middle' fill='white' font-family='system-ui'>EC</text></svg>" />
     <title>EduConnect AI Admin</title>
+    <!--
+      Pre-hydration shell. This is a single-page app, so without it the first
+      paint is a blank white page until the JS bundle parses. These few rules
+      are inline on purpose: they must not wait on a stylesheet request.
+    -->
+    <style>
+      /* Values below come from DESIGN.md tokens: surface-main, brand-500,
+         text-secondary, rounded.lg, and the display/body type steps. */
+      html { background: #f9fafb; }              /* surface-main */
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, sans-serif; }
+      #boot {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;                               /* spacing.lg */
+        color: #6b7280;                          /* text-secondary */
+      }
+      #boot .mark {
+        width: 48px; height: 48px;
+        border-radius: 12px;                     /* rounded.lg */
+        background: #0ea5e9;                     /* brand-500 */
+        color: #ffffff;                          /* text-inverse */
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.125rem; letter-spacing: .5px;  /* title */
+      }
+      #boot .label { font-size: 0.875rem; }      /* body */
+      /* Removed the moment React mounts. */
+      #root:not(:empty) + #boot { display: none; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot">
+      <div class="mark">EC</div>
+      <div class="label">Loading EduConnect AI&hellip;</div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
