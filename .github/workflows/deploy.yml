@@ -35,7 +35,13 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       WA_VERIFY_TOKEN: test-token
       WA_APP_SECRET: test-secret
-      SECRET_KEY: test-secret-key
+      # Fake values for the test run only — never real credentials.
+      # Signature verification fails closed on an empty secret (by design),
+      # so the Paystack webhook tests need one set or they all return 400.
+      PAYSTACK_SECRET_KEY: sk_test_ci_not_a_real_key
+      # 32+ chars so the production startup guard in app/main.py stays
+      # satisfied if APP_ENV is ever set to something other than development.
+      SECRET_KEY: ci-test-secret-key-not-for-production-use
 
     steps:
       - uses: actions/checkout@v4
