@@ -34,6 +34,17 @@ typography:
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.2
+  # Greeting voice for unauthenticated entry surfaces (the login screen).
+  # A system serif, not a web font: these screens are the app's first paint
+  # and must not wait on a font request. Not for use inside the dashboard,
+  # which stays on the Inter steps above.
+  display-accent:
+    fontFamily: 'Georgia, "Times New Roman", serif'
+    fontSize: "2.125rem"
+    fontWeight: 600
+    fontStyle: "italic"
+    lineHeight: 1
+    letterSpacing: "-0.01em"
   title:
     fontFamily: "Inter, system-ui, -apple-system, sans-serif"
     fontSize: "1.125rem"

@@ -84,4 +84,59 @@
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
+
+  /* --- Login page only ---------------------------------------------
+     Scoped deliberately: the login screen uses a yellow/navy palette,
+     while the rest of the dashboard stays on brand-* sky blue. These do
+     not touch .btn / .input, which every other page relies on. */
+
+  .login-field {
+    @apply block w-full rounded-full border border-[#26346B]/15 bg-[#F7F8FC] py-3 pl-12 pr-4
+           text-sm text-[#26346B] placeholder:text-gray-400
+           transition-[border-color,box-shadow] duration-150
+           focus:border-[#F5B301] focus:outline-none focus:ring-2 focus:ring-[#F5B301]/35;
+  }
+
+  .login-submit {
+    /* Navy on yellow, never white on yellow — white would fail contrast. */
+    @apply inline-flex w-full items-center justify-center rounded-full bg-[#F5B301]
+           px-6 py-3.5 text-sm font-bold text-[#26346B] shadow-[0_10px_24px_-8px_rgba(245,179,1,0.9)]
+           transition-[background-color,box-shadow,opacity] duration-150
+           hover:bg-[#E5A700] focus:outline-none focus:ring-2 focus:ring-[#26346B] focus:ring-offset-2
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /* DESIGN.md typography role: display-accent.
+     Greeting voice for unauthenticated entry surfaces. A system serif, not a
+     web font, because this screen is the app's first paint. */
+  .login-script {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 2.125rem;
+    font-style: italic;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .login-card {
+    animation: login-rise 320ms ease-out both;
+  }
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .toast-visible {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
 }
