@@ -1,17 +1,60 @@
+import logging
 import re
+import uuid
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.flows import FlowResult
 from app.models.conversation import Conversation
 from app.models.programme import CATEGORY_LABELS, PROGRAMME_CATEGORIES
-from app.services import analytics_service, programme_service, referral_service, registration_service
+from app.services import (
+    analytics_service,
+    billing_service,
+    programme_service,
+    referral_service,
+    registration_service,
+)
 from app.utils.whatsapp_helpers import (
     build_interactive_button_payload,
     build_interactive_list_payload,
     build_text_payload,
 )
+
+logger = logging.getLogger(__name__)
+
+
+async def _raise_term_invoice(student, flow_data: dict, db: AsyncSession):
+    """Generate the term invoice for a newly registered child.
+
+    Returns None when the programme has no fee items configured for the
+    current term — registration must still succeed in that case, so the
+    parent simply sees the old confirmation and the school bills them
+    separately.
+    """
+    programme_id = flow_data.get("programme_id")
+    if not programme_id:
+        return None
+    try:
+        return await billing_service.generate_term_invoice(
+            student_id=student.id,
+            programme_id=uuid.UUID(programme_id),
+            term=settings.CURRENT_TERM,
+            academic_year=settings.academic_year,
+            db=db,
+            due_date=date.today() + timedelta(days=settings.INVOICE_DUE_DAYS),
+            include_optional=False,
+        )
+    except ValueError as exc:
+        logger.warning(
+            "No term invoice raised for student %s: %s", student.id, exc
+        )
+        return None
+    except Exception:
+        logger.exception("Failed to raise term invoice for student %s", student.id)
+        return None
 
 STEPS = [
     "start",
@@ -524,22 +567,73 @@ async def handle_step(
                 },
             )
 
+            # Bill the whole term up front — tuition plus every other
+            # mandatory item — so the parent sees one complete figure rather
+            # than discovering extras later. Optional extras are added by an
+            # admin afterwards.
+            invoice = await _raise_term_invoice(student, flow_data, db)
+
+            if invoice is None:
+                return FlowResult(
+                    next_step="post_registration",
+                    flow_data=flow_data,
+                    reply=build_interactive_button_payload(
+                        to,
+                        body=(
+                            f"Registration complete!\n\n"
+                            f"Registration ID: *{student.registration_id}*\n"
+                            f"Student: {student.full_name}\n"
+                            f"Programme: {flow_data.get('programme_name')}\n\n"
+                            "Would you like to pay now?"
+                        ),
+                        buttons=[
+                            {"id": "pay_now_reg", "title": "Pay Now"},
+                            {"id": "back_menu_reg", "title": "Main Menu"},
+                        ],
+                        header="Registration Done",
+                    ),
+                )
+
+            flow_data["invoice_id"] = str(invoice.id)
+            flow_data["invoice_number"] = invoice.invoice_number
+
+            lines = [
+                "Registration complete!",
+                "",
+                f"Registration ID: *{student.registration_id}*",
+                f"Student: {student.full_name}",
+                f"Programme: {flow_data.get('programme_name')}",
+                "",
+                f"*{invoice.title}*",
+                f"Invoice: {invoice.invoice_number}",
+                "",
+            ]
+            for item in invoice.items:
+                lines.append(f"  {item.description}: N{item.total_amount:,.0f}")
+            lines.append("")
+            lines.append(f"*Total for the term: N{invoice.total_amount:,.0f}*")
+            if invoice.due_date:
+                lines.append(f"Due: {invoice.due_date.strftime('%d/%m/%Y')}")
+
+            buttons = [{"id": "pay_now_reg", "title": "Pay Full"}]
+            if settings.INSTALLMENT_COUNT > 1:
+                per = invoice.total_amount / settings.INSTALLMENT_COUNT
+                lines.append("")
+                lines.append(
+                    f"Or spread it over {settings.INSTALLMENT_COUNT} "
+                    f"{settings.INSTALLMENT_FREQUENCY} payments of about "
+                    f"N{per:,.0f}."
+                )
+                buttons.append({"id": "pay_plan_reg", "title": "Pay in Parts"})
+            buttons.append({"id": "back_menu_reg", "title": "Main Menu"})
+
             return FlowResult(
                 next_step="post_registration",
                 flow_data=flow_data,
                 reply=build_interactive_button_payload(
                     to,
-                    body=(
-                        f"Registration complete!\n\n"
-                        f"Registration ID: *{student.registration_id}*\n"
-                        f"Student: {student.full_name}\n"
-                        f"Programme: {flow_data.get('programme_name')}\n\n"
-                        "Would you like to pay now?"
-                    ),
-                    buttons=[
-                        {"id": "pay_now_reg", "title": "Pay Now"},
-                        {"id": "back_menu_reg", "title": "Main Menu"},
-                    ],
+                    body="\n".join(lines),
+                    buttons=buttons,
                     header="Registration Done",
                 ),
             )
@@ -560,6 +654,16 @@ async def handle_step(
 
     if step == "post_registration":
         choice = user_input.strip().lower()
+        if choice == "pay_plan_reg":
+            return FlowResult(
+                next_flow="payment_plan",
+                next_step="start",
+                flow_data={
+                    "from_registration": True,
+                    "invoice_id": flow_data.get("invoice_id"),
+                    "invoice_number": flow_data.get("invoice_number"),
+                },
+            )
         if choice == "pay_now_reg":
             return FlowResult(
                 next_flow="payment",

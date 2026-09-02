@@ -644,6 +644,28 @@ async def get_fee_breakdown_for_programme(
 # ---------------------------------------------------------------------------
 
 
+async def get_term_invoice_for_student(
+    student_id: uuid.UUID,
+    academic_term: str,
+    db: AsyncSession,
+) -> Invoice | None:
+    """Find this student's existing invoice for a term, if there is one.
+
+    `academic_term` is the composed label ("2025/2026 1st Term") that
+    generate_term_invoice writes, so it is a natural key alongside the
+    student. Cancelled invoices do not count — a term can legitimately be
+    re-invoiced after one is voided.
+    """
+    result = await db.execute(
+        select(Invoice).where(
+            Invoice.student_id == student_id,
+            Invoice.academic_term == academic_term,
+            Invoice.status != "cancelled",
+        )
+    )
+    return result.scalars().first()
+
+
 async def generate_term_invoice(
     student_id: uuid.UUID,
     programme_id: uuid.UUID,
@@ -653,6 +675,12 @@ async def generate_term_invoice(
     due_date: date | None = None,
     include_optional: bool = False,
 ) -> Invoice:
+    """Create this student's invoice for a term from the programme's fee items.
+
+    Idempotent per student per term: if an invoice already exists for the
+    term it is returned untouched. A child who registers mid-term and is
+    then caught by the bulk run for their class must not be billed twice.
+    """
     from app.models.programme import TERM_LABELS
 
     student_result = await db.execute(
@@ -681,6 +709,14 @@ async def generate_term_invoice(
     academic_term = f"{academic_year} {term_label}"
     title = f"{programme.name} - {term_label} {academic_year}"
 
+    existing = await get_term_invoice_for_student(student_id, academic_term, db)
+    if existing:
+        logger.info(
+            "Student %s already has invoice %s for %s — not creating another",
+            student_id, existing.invoice_number, academic_term,
+        )
+        return existing
+
     items = []
     for fi in fee_items:
         label = fi.fee_type.name
@@ -705,6 +741,67 @@ async def generate_term_invoice(
         due_date=due_date,
     )
     return invoice
+
+
+async def compose_fee_breakdown_text(
+    programme_id: uuid.UUID,
+    term: str,
+    db: AsyncSession,
+    academic_year: str | None = None,
+    include_optional: bool = True,
+) -> str:
+    """Render a programme's term fees as a message body.
+
+    Shared by the parent-facing flows and the admin broadcast composer so
+    amounts are never retyped by hand.
+    """
+    from app.config import settings
+    from app.models.programme import TERM_LABELS
+
+    programme_result = await db.execute(
+        select(Programme).where(Programme.id == programme_id)
+    )
+    programme = programme_result.scalar_one_or_none()
+    if not programme:
+        raise ValueError("Programme not found")
+
+    breakdown = await get_fee_breakdown_for_programme(
+        programme_id, term, db, include_optional=include_optional
+    )
+    if not breakdown["mandatory_items"] and not breakdown["optional_items"]:
+        raise ValueError(
+            f"No fee items defined for {programme.name}, {TERM_LABELS.get(term, term)}"
+        )
+
+    year = academic_year or settings.academic_year
+    term_label = TERM_LABELS.get(term, term.title())
+
+    lines = [
+        f"*{programme.name} — {term_label} {year} Fees*",
+        "",
+    ]
+
+    for item in breakdown["mandatory_items"]:
+        lines.append(f"• {item.fee_type.name}: N{item.amount:,.0f}")
+    lines.append("")
+    lines.append(f"*Total payable: N{breakdown['mandatory_total']:,.0f}*")
+
+    if breakdown["optional_items"]:
+        lines.append("")
+        lines.append("_Optional extras (charged only if selected):_")
+        for item in breakdown["optional_items"]:
+            lines.append(f"• {item.fee_type.name}: N{item.amount:,.0f}")
+
+    if settings.INSTALLMENT_COUNT > 1:
+        per = breakdown["mandatory_total"] / settings.INSTALLMENT_COUNT
+        lines.append("")
+        lines.append(
+            f"You may pay in {settings.INSTALLMENT_COUNT} "
+            f"{settings.INSTALLMENT_FREQUENCY} instalments of about "
+            f"N{per:,.0f}."
+        )
+
+    return "\n".join(lines)
 
 
 async def generate_term_invoices_for_programme(

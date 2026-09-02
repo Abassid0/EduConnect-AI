@@ -37,6 +37,18 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # --- School term & fee policy -------------------------------------
+    # Which term new registrations are billed for. Update at the start of
+    # each term: first | second | third
+    CURRENT_TERM: str = "first"
+    # e.g. "2025/2026". Left blank, it is derived from today's date.
+    CURRENT_ACADEMIC_YEAR: str = ""
+    # How many days a parent has to settle a term invoice in full.
+    INVOICE_DUE_DAYS: int = 21
+    # School-wide instalment offer. Every parent is offered the same split.
+    INSTALLMENT_COUNT: int = 3
+    INSTALLMENT_FREQUENCY: str = "monthly"  # weekly | biweekly | monthly
+
     CORS_ORIGINS: str = ""
 
     ANTHROPIC_API_KEY: str = ""
@@ -52,6 +64,22 @@ class Settings(BaseSettings):
     @property
     def wa_api_base(self) -> str:
         return f"https://graph.facebook.com/{self.WA_API_VERSION}/{self.WA_PHONE_NUMBER_ID}"
+
+    @property
+    def academic_year(self) -> str:
+        """The configured academic year, or one derived from today's date.
+
+        Nigerian school years run September to July, so a date in or after
+        September belongs to year/year+1, and anything earlier belongs to
+        the session that started the previous September.
+        """
+        if self.CURRENT_ACADEMIC_YEAR:
+            return self.CURRENT_ACADEMIC_YEAR
+        from datetime import date
+
+        today = date.today()
+        start = today.year if today.month >= 9 else today.year - 1
+        return f"{start}/{start + 1}"
 
 
 settings = Settings()

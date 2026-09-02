@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.models.admin_user import AdminUser
 from app.services import broadcast_service
@@ -50,6 +51,53 @@ class BroadcastOut(BaseModel):
             sent_at=b.sent_at.isoformat() if b.sent_at else None,
             created_at=b.created_at.isoformat(),
         )
+
+
+class FeeComposeRequest(BaseModel):
+    programme_id: uuid.UUID
+    term: str
+    academic_year: str | None = Field(default=None, max_length=20)
+    include_optional: bool = True
+
+
+@router.post("/compose-fees")
+async def compose_fee_message(
+    data: FeeComposeRequest,
+    _user: AdminUser = Depends(require_role("super_admin", "admin", "finance")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Build a fee-breakdown message for one programme and term.
+
+    Amounts come straight from the programme's fee items, so nobody has to
+    retype them into a broadcast each term. The admin can edit the result
+    before sending.
+    """
+    from app.models.programme import TERM_LABELS, TERMS
+    from app.services import billing_service
+
+    if data.term not in TERMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"term must be one of: {', '.join(TERMS)}",
+        )
+
+    try:
+        body = await billing_service.compose_fee_breakdown_text(
+            programme_id=data.programme_id,
+            term=data.term,
+            db=db,
+            academic_year=data.academic_year,
+            include_optional=data.include_optional,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    term_label = TERM_LABELS.get(data.term, data.term.title())
+    year = data.academic_year or settings.academic_year
+    return {
+        "title": f"{term_label} {year} Fees",
+        "body": body,
+    }
 
 
 @router.post("", response_model=BroadcastOut, status_code=201)

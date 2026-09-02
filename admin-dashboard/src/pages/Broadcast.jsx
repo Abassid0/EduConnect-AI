@@ -80,6 +80,9 @@ function ComposeTab({ onSent }) {
   const [previewing, setPreviewing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [sending, setSending] = useState(false);
+  const [feeTerm, setFeeTerm] = useState("first");
+  const [composing, setComposing] = useState(false);
+  const [composeError, setComposeError] = useState("");
 
   useEffect(() => {
     client
@@ -87,6 +90,32 @@ function ComposeTab({ onSent }) {
       .then((r) => setProgrammes(r.data || []))
       .catch(() => {});
   }, []);
+
+  const handleComposeFees = async () => {
+    if (!form.programme_id) return;
+    setComposing(true);
+    setComposeError("");
+    try {
+      const res = await broadcastsApi.composeFees({
+        programme_id: form.programme_id,
+        term: feeTerm,
+        include_optional: true,
+      });
+      const programme = programmes.find((p) => p.id === form.programme_id);
+      setForm((f) => ({
+        ...f,
+        title: programme ? `${programme.name} — ${res.title}` : res.title,
+        body: res.body,
+      }));
+    } catch (err) {
+      setComposeError(
+        err.response?.data?.detail ||
+          "Could not build the fee message. Check the programme has fee items for this term."
+      );
+    } finally {
+      setComposing(false);
+    }
+  };
 
   const buildSegmentValue = () => {
     if (form.segment_type === "programme") return form.programme_id || null;
@@ -247,6 +276,51 @@ function ComposeTab({ onSent }) {
                 </option>
               ))}
             </select>
+
+            {/* Fee-notice composer: pulls the amounts from the programme's
+                fee items so nobody retypes them each term. */}
+            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <p className="mb-2 text-sm font-medium text-gray-700">
+                Fee notice for this programme
+              </p>
+              <div className="flex flex-wrap items-end gap-2">
+                <div>
+                  <label
+                    htmlFor="fee-term"
+                    className="mb-1 block text-xs text-gray-500"
+                  >
+                    Term
+                  </label>
+                  <select
+                    id="fee-term"
+                    className="input w-40"
+                    value={feeTerm}
+                    onChange={(e) => setFeeTerm(e.target.value)}
+                  >
+                    <option value="first">1st Term</option>
+                    <option value="second">2nd Term</option>
+                    <option value="third">3rd Term</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  disabled={!form.programme_id || composing}
+                  onClick={handleComposeFees}
+                >
+                  {composing ? "Building…" : "Generate fee message"}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Fills in the title and message below from the programme&rsquo;s
+                fee items. You can edit before sending.
+              </p>
+              {composeError && (
+                <p role="alert" className="mt-2 text-xs text-red-600">
+                  {composeError}
+                </p>
+              )}
+            </div>
           </div>
         )}
 

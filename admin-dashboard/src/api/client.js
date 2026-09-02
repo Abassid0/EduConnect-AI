@@ -132,6 +132,8 @@ export const broadcasts = {
   preview: (id) => client.post(`/broadcasts/${id}/preview`).then((r) => r.data),
   send: (id) => client.post(`/broadcasts/${id}/send`).then((r) => r.data),
   cancel: (id) => client.delete(`/broadcasts/${id}`).then((r) => r.data),
+  composeFees: (data) =>
+    client.post("/broadcasts/compose-fees", data).then((r) => r.data),
 };
 
 export const calendar = {
